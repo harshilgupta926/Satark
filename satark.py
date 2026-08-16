@@ -302,7 +302,7 @@ THREAT_CHECKS = [
     "Scam Indicators",
     "Phishing Signs",
     "Deepfake Risk",
-    "Misinformation",
+    "Fake Information",
     "Suspicious Links",
     "Impersonation",
     "Malware Indicators",
