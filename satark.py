@@ -2256,22 +2256,27 @@ def extract_pdf_text(uploaded_file):
 
 
 def image_to_data_url(uploaded_file):
-    """Convert one uploaded image to a compact JPEG data URL."""
+    """Convert one uploaded image to a compact JPEG data URL.
+
+    Kept modest in size (max_side=900, moderate JPEG quality) so a small
+    number of images stays well under Groq's on-demand tokens-per-minute
+    budget for vision models — full-resolution uploads were previously
+    large enough on their own to trip the TPM rate limit."""
     from io import BytesIO
     try:
         uploaded_file.seek(0)
     except Exception:
         pass
     image = Image.open(uploaded_file).convert("RGB")
-    max_side = 1400
+    max_side = 900
     if max(image.size) > max_side:
         scale = max_side / max(image.size)
         image = image.resize((max(1, int(image.width * scale)), max(1, int(image.height * scale))))
-    for quality in (82, 72, 62, 52):
+    for quality in (75, 62, 50, 40):
         buffer = BytesIO()
         image.save(buffer, format="JPEG", quality=quality, optimize=True)
         encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
-        if len(encoded) <= 2_200_000 or quality == 52:
+        if len(encoded) <= 900_000 or quality == 40:
             return f"data:image/jpeg;base64,{encoded}"
     return f"data:image/jpeg;base64,{encoded}"
 
@@ -2324,7 +2329,7 @@ def single_file_fingerprint(uploaded_file):
 # audio-transcription path is unavailable in this environment, SATARK
 # degrades gracefully and explains what could not be analyzed rather than
 # crashing the whole scan.
-MAX_VIDEO_FRAMES = 6
+MAX_VIDEO_FRAMES = 3  # matches qwen/qwen3.6-27b's 3-image-per-request cap
 MAX_VIDEO_BYTES = 200 * 1024 * 1024  # 200 MB safety cap for in-memory handling
 
 
@@ -2418,8 +2423,12 @@ def _bgr_to_pil(frame_bgr):
     return Image.fromarray(frame_rgb)
 
 
-def pil_frames_to_data_urls(frames, max_side=1280):
-    """Convert extracted PIL frames into compact JPEG data URLs for the vision model."""
+def pil_frames_to_data_urls(frames, max_side=768):
+    """Convert extracted PIL frames into compact JPEG data URLs for the vision
+    model. Kept deliberately small (max_side=768, lower JPEG quality) because
+    Groq's on-demand tier has a tight tokens-per-minute budget and vision
+    tokens scale with image size — a handful of full-resolution frames can
+    blow the TPM limit on their own before the request even runs."""
     from io import BytesIO
     urls = []
     for image in frames:
@@ -2427,11 +2436,11 @@ def pil_frames_to_data_urls(frames, max_side=1280):
         if max(image.size) > max_side:
             scale = max_side / max(image.size)
             image = image.resize((max(1, int(image.width * scale)), max(1, int(image.height * scale))))
-        for quality in (80, 68, 55):
+        for quality in (65, 50, 40):
             buffer = BytesIO()
             image.save(buffer, format="JPEG", quality=quality, optimize=True)
             encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
-            if len(encoded) <= 1_800_000 or quality == 55:
+            if len(encoded) <= 700_000 or quality == 40:
                 urls.append(f"data:image/jpeg;base64,{encoded}")
                 break
     return urls
@@ -2499,8 +2508,6 @@ TEXT_MODEL_PREFERENCES = [
 # analyze_with_groq now tries each of these in order and only reports failure
 # once every candidate has been exhausted.
 VISION_MODEL_PREFERENCES = [
-    "meta-llama/llama-4-scout-17b-16e-instruct",
-    "meta-llama/llama-4-maverick-17b-128e-instruct",
     "qwen/qwen3.6-27b",
 ]
 
@@ -2775,13 +2782,19 @@ Not detected, Low, Medium, High.
 
     detail = "\n".join(errors[-4:])
     kind = "image/QR/video" if image_data_urls else "text"
+    rate_limited = any("rate_limit_exceeded" in e or "Request too large" in e for e in errors)
 
     if image_data_urls:
+        hint = (
+            "\n\nThis looks like a Groq rate-limit (tokens-per-minute) issue on the free/on-demand "
+            "tier rather than a broken model. Wait a minute and try again with fewer or smaller "
+            "images, or upgrade the Groq account tier."
+        ) if rate_limited else ""
         raise RuntimeError(
             "SATARK could not complete the visual analysis with any configured "
             "vision model (tried: " + ", ".join(candidates) + "). Please verify "
             "that this Groq API key/project has access to at least one supported "
-            "vision model and try again.\n" + detail
+            "vision model and try again.\n" + detail + hint
         )
 
     raise RuntimeError(
