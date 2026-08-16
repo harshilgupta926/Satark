@@ -259,7 +259,11 @@ def normalize_result_consistency(result):
     combined_text = f"{category} {verdict} {summary}".lower()
 
     is_scam = is_scam_claim(category, verdict, summary)
-    is_phishing = "phishing" in combined_text
+
+    is_phishing = bool(re.search(
+        r"\b(phishing attempt|phishing attack|phishing link|phishing message|is phishing|appears to be phishing)\b",
+        combined_text
+    ))
 
     if is_scam or is_phishing:
         if is_scam:
