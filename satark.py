@@ -529,14 +529,7 @@ def build_final_conclusion(result):
 
 
 def calibrate_confidence(data, result):
-    """Create a stable, high-visibility SATARK confidence display.
-
-    The raw model confidence is retained as ``model_confidence`` for auditability,
-    while the user-facing SATARK confidence is calibrated to the requested
-    95%–99.99% presentation range using the returned evidence and a small
-    per-analysis variation. This prevents accidental 0% displays without
-    changing the underlying risk score.
-    """
+    """Report confidence that reflects actual evidence strength — no artificial floor."""
     try:
         raw_conf = float(data.get("confidence", result.get("confidence", 70)))
     except (TypeError, ValueError):
@@ -544,38 +537,23 @@ def calibrate_confidence(data, result):
     raw_conf = max(0.0, min(100.0, raw_conf))
     result["model_confidence"] = round(raw_conf, 2)
 
-    evidence_count = len(result.get("key_indicators", []))
-    action_count = len(result.get("recommendations", []))
     checks = result.get("threat_analysis", {}) or {}
-    detected_count = sum(1 for value in checks.values() if check_class(value) == "check-detected")
-    review_count = sum(1 for value in checks.values() if check_class(value) == "check-review")
+    review_count = sum(1 for v in checks.values() if check_class(v) == "check-review")
+    evidence_count = len(result.get("key_indicators", []))
 
-    # Stronger/complete evidence raises the presentation confidence. The
-    # requested floor/ceiling are enforced after the calculation.
-    evidence_strength = min(1.0, (evidence_count + action_count + detected_count) / 12.0)
-    ambiguity_penalty = min(1.0, review_count / max(1, len(THREAT_CHECKS)))
-    risk_alignment = abs(clamp_score(result.get("risk_score", 50)) - raw_conf) / 100.0
+    # Penalize confidence when most checks are "Needs review" (ambiguous evidence)
+    ambiguity_penalty = (review_count / max(1, len(THREAT_CHECKS))) * 20
 
-    seed_text = "|".join([
-        safe_text(result.get("threat_category")),
-        safe_text(result.get("scam_pattern")),
-        safe_text(result.get("summary")),
-        str(result.get("risk_score", 50)),
-        datetime.now().strftime("%Y%m%d%H%M%S%f"),
-    ])
-    digest = hashlib.sha256(seed_text.encode("utf-8", errors="ignore")).hexdigest()
-    variation = (int(digest[:8], 16) % 100) / 100.0
+    # Small bonus for well-evidenced findings, capped low
+    evidence_bonus = min(5.0, evidence_count * 1.0)
 
-    calibrated = (
-        95.15
-        + (raw_conf / 100.0) * 2.35
-        + evidence_strength * 1.55
-        - ambiguity_penalty * 0.55
-        - risk_alignment * 0.25
-        + variation * 0.55
-    )
-    result["confidence"] = round(max(95.0, min(99.99, calibrated)), 2)
+    calibrated = raw_conf - ambiguity_penalty + evidence_bonus
+    result["confidence"] = round(max(0.0, min(100.0, calibrated)), 2)
     return result
+
+
+
+
 
 
 def normalize_result(data, raw="", model_used=""):
@@ -820,7 +798,10 @@ Rules:
 - Explain findings in plain English for students, teachers and non-technical users.
 - A high risk score means higher risk; a low score never guarantees safety.
 - Distinguish evidence from inference.
-- Confidence must reflect the strength and completeness of the available evidence.
+- Confidence must reflect the strength and completeness of the available evidence. Use the
+  full 0-100 range honestly: weak or ambiguous evidence should produce low confidence
+  (below 50), and only strong, unambiguous, well-supported evidence should produce high
+  confidence (above 85). Do not default to a high number.
 - Do not invent URLs, organizations, sender details, or facts not visible in the input.
 
 IMAGE AUTHENTICITY RULES:
