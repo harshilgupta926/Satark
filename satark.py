@@ -1523,8 +1523,6 @@ st.markdown('<div class="footer">SATARK • Smart AI Threat Analysis & Risk Know
 
 
 
-
-
 # 🧰 CORE PYTHON / SYSTEM
 import os
 import re
@@ -2329,7 +2327,8 @@ def single_file_fingerprint(uploaded_file):
 # audio-transcription path is unavailable in this environment, SATARK
 # degrades gracefully and explains what could not be analyzed rather than
 # crashing the whole scan.
-MAX_VIDEO_FRAMES = 3  # matches qwen/qwen3.6-27b's 3-image-per-request cap
+MAX_VIDEO_FRAMES = 2  # kept minimal — every extra frame competes with the
+# transcript and system prompt for the same tight tokens-per-minute budget
 MAX_VIDEO_BYTES = 200 * 1024 * 1024  # 200 MB safety cap for in-memory handling
 
 
@@ -2423,12 +2422,11 @@ def _bgr_to_pil(frame_bgr):
     return Image.fromarray(frame_rgb)
 
 
-def pil_frames_to_data_urls(frames, max_side=768):
+def pil_frames_to_data_urls(frames, max_side=512):
     """Convert extracted PIL frames into compact JPEG data URLs for the vision
-    model. Kept deliberately small (max_side=768, lower JPEG quality) because
-    Groq's on-demand tier has a tight tokens-per-minute budget and vision
-    tokens scale with image size — a handful of full-resolution frames can
-    blow the TPM limit on their own before the request even runs."""
+    model. Kept small (512px, low JPEG quality) because Groq's on-demand tier
+    has a tight tokens-per-minute budget shared across every frame AND the
+    audio transcript AND the system prompt in the same request."""
     from io import BytesIO
     urls = []
     for image in frames:
@@ -2436,11 +2434,11 @@ def pil_frames_to_data_urls(frames, max_side=768):
         if max(image.size) > max_side:
             scale = max_side / max(image.size)
             image = image.resize((max(1, int(image.width * scale)), max(1, int(image.height * scale))))
-        for quality in (65, 50, 40):
+        for quality in (55, 42, 30):
             buffer = BytesIO()
             image.save(buffer, format="JPEG", quality=quality, optimize=True)
             encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
-            if len(encoded) <= 700_000 or quality == 40:
+            if len(encoded) <= 400_000 or quality == 30:
                 urls.append(f"data:image/jpeg;base64,{encoded}")
                 break
     return urls
@@ -2477,7 +2475,11 @@ def transcribe_video_audio(uploaded_file, client):
                 response_format="text",
             )
         text = transcript if isinstance(transcript, str) else safe_text(getattr(transcript, "text", ""))
-        return text.strip()[:12000]
+        # Kept short: on Groq's on-demand tier the tokens-per-minute budget is
+        # shared across the transcript, the system prompt, and every video
+        # frame in the same request, so a long transcript alone can blow the
+        # limit even with small images.
+        return text.strip()[:3000]
     except Exception:
         # Audio may be silent, absent, or the account may lack Whisper access.
         # Frame-only analysis is still useful, so don't raise here.
@@ -2556,61 +2558,27 @@ def model_status(client):
 SYSTEM_PROMPT = """
 You are SATARK, a careful digital-threat and content-authenticity analysis assistant.
 
-Analyze the supplied content for scams, phishing, social engineering, malware indicators,
-impersonation, suspicious links, credential theft, fraud, manipulation, fake offers,
-payment fraud, account takeover, malicious QR codes, deepfakes, AI-generated content,
-digitally manipulated media, fabricated information, misleading claims, fake quotes,
-and deceptive endorsements.
+Analyze the content for scams, phishing, social engineering, malware, impersonation,
+suspicious links, credential theft, fraud, payment fraud, account takeover, malicious
+QR codes, deepfakes, AI-generated/manipulated media, and fabricated or misleading claims.
 
 Rules:
-- Never claim certainty when evidence is weak.
-- Explain findings in plain English for students, teachers and non-technical users.
-- A high risk score means higher risk; a low score never guarantees safety.
-- Distinguish evidence from inference.
-- Confidence must reflect the strength and completeness of the available evidence. Use the
-  full 0-100 range honestly: weak or ambiguous evidence should produce low confidence
-  (below 50), and only strong, unambiguous, well-supported evidence should produce high
-  confidence (above 85). Do not default to a high number.
+- Never claim certainty when evidence is weak. Distinguish evidence from inference.
+- Confidence must reflect evidence strength: weak/ambiguous evidence → below 50; only
+  strong, unambiguous evidence → above 85. Do not default high.
 - Do not invent URLs, organizations, sender details, or facts not visible in the input.
+- For images/video frames: inspect visible text, URLs, QR content, logos, layout,
+  instructions, and whether content may be AI-generated, manipulated, or a deepfake.
+  Identify factual claims (quotes, endorsements, identities, affiliations) that may need
+  verification. Do not classify as Safe merely because it looks like a normal/professional
+  graphic. Cybersecurity safety and content authenticity are separate axes.
+- For video: frames are a sample through the clip, not exhaustive — treat them as a
+  sequence and reflect that limited sampling in confidence. If an audio transcript is
+  included, combine spoken content (urgency, payment/credential requests) with the visual
+  evidence. If no transcript is provided, rely on frames only and say so.
+- For URLs: consider domain mismatch, redirects, credential requests, urgency, impersonation.
 
-IMAGE AUTHENTICITY RULES:
-- For images, inspect visible text, URLs, QR-related content, logos, layout and instructions.
-- Analyze whether the image may be AI-generated, digitally manipulated, or a deepfake.
-- Identify factual claims made by the image, including quotes, endorsements, affiliations,
-  identities, products, services, events, and other real-world claims.
-- Treat claims involving people, organizations, products, services, or events as claims
-  that may require verification.
-- Do not classify an image as Safe merely because it looks like a normal advertisement
-  or professional graphic.
-- If a claim appears fabricated, misleading, manipulated, or unsupported by the available
-  evidence, reflect this in the risk assessment and explain why.
-- If a person's identity, statement, image, or endorsement appears to be falsely
-  represented or manipulated, assess the appropriate Impersonation, Deepfake Risk,
-  and Fake Information fields.
-- Separate cybersecurity safety from content authenticity: content can be malware-free
-  while still being deceptive, manipulated, or misleading.
-- Do not assume that realistic-looking content is authentic.
-
-VIDEO ANALYSIS RULES:
-- You are given several frames sampled evenly through a video, and (when available) a
-  transcript of the video's audio track.
-- Treat the frames as a sequence, not independent images: look for continuity, consistent
-  identities, and cross-frame contradictions.
-- Combine visual evidence (frames) with spoken content (transcript) to judge scams,
-  impersonation, deepfakes and manipulation. Urgency, payment requests, or credential
-  requests spoken in the transcript are just as significant as text shown on screen.
-- If no transcript is available, say so in your summary and rely on frame evidence only;
-  do not claim to have "heard" anything the transcript did not contain.
-- Because frames are a sample of the full video, treat the analysis as representative, not
-  exhaustive, and reflect that appropriately in the confidence score.
-
-For URLs/web pages:
-- Consider domain mismatch, suspicious redirects, credential requests, urgency,
-  impersonation and other suspicious behavior.
-
-Return ONLY valid JSON. No markdown. No code fences.
-
-Required JSON schema:
+Return ONLY valid JSON, no markdown, no code fences. Required schema:
 {
   "risk_score": 0,
   "confidence": 0,
@@ -2670,7 +2638,7 @@ Not detected, Low, Medium, High.
         common = {
             "model": model,
             "temperature": 0 if repair else 0.1,
-            "max_tokens": 1400 if not repair else 1100,
+            "max_tokens": 900 if not repair else 800,
             "response_format": {"type": "json_object"},
         }
 
