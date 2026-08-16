@@ -450,19 +450,70 @@ def check_class(value):
 def build_fallback_threat_analysis(result):
     category = safe_text(result.get("threat_category", "")).lower()
     indicators = " ".join(result.get("key_indicators", [])).lower()
-    text = category + " " + indicators
+    summary = safe_text(result.get("summary", "")).lower()
+    verdict = safe_text(result.get("verdict", "")).lower()
+
+    text = category + " " + indicators + " " + summary + " " + verdict
+
     def has(*terms):
         return any(term in text for term in terms)
+
+    public_figure_claim = has(
+        "public figure", "celebrity", "politician",
+        "brand ambassador", "endorsement", "endorses",
+        "celebrity endorsement", "public figure endorsement"
+    )
+
+    deepfake = has(
+        "deepfake", "deep fake", "synthetic media",
+        "ai-generated", "ai generated", "manipulated image",
+        "face manipulation", "digitally manipulated"
+    )
+
+    fake_claim = has(
+        "fake", "false", "fabricat", "misinformation",
+        "misleading", "unverified", "unsupported claim",
+        "false claim", "deceptive"
+    )
+
     return {
-        "Scam Indicators": "Detected" if (category == "scam" or has("scam", "fraud", "prize", "fee")) else "Needs review",
-        "Phishing Signs": "Detected" if has("phishing", "credential", "login", "password", "otp") else "Needs review",
-        "Deepfake Risk": "High" if has("deepfake", "synthetic media") else "Low",
-        "Fake Information": "Detected" if has("fake", "false", "fabricat", "misinformation") else "Needs review",
-        "Suspicious Links": "Detected" if has("suspicious link", "malicious link", "url", "domain") else "Needs review",
-        "Impersonation": "Detected" if has("impersonation", "impersonat", "pretend", "fake authority") else "Needs review",
-        "Malware Indicators": "Detected" if has("malware", "trojan", "ransomware", "apk", "virus") else "Not detected",
-        "Social Engineering": "Detected" if has("social engineering", "urgency", "pressure", "manipulation") else "Needs review",
+        "Scam Indicators": "Detected" if has(
+            "scam", "fraud", "prize", "fee"
+        ) else "Needs review",
+
+        "Phishing Signs": "Detected" if has(
+            "phishing", "credential", "login", "password", "otp"
+        ) else "Needs review",
+
+        "Deepfake Risk": (
+            "High" if deepfake
+            else "Medium" if public_figure_claim
+            else "Low"
+        ),
+
+        "Fake Information": "Detected" if fake_claim else "Needs review",
+
+        "Suspicious Links": "Detected" if has(
+            "suspicious link", "malicious link", "url", "domain"
+        ) else "Needs review",
+
+        "Impersonation": "Detected" if (
+            public_figure_claim or has(
+                "impersonation", "impersonat",
+                "pretend", "fake authority"
+            )
+        ) else "Needs review",
+
+        "Malware Indicators": "Detected" if has(
+            "malware", "trojan", "ransomware", "apk", "virus"
+        ) else "Not detected",
+
+        "Social Engineering": "Detected" if has(
+            "social engineering", "urgency", "pressure", "manipulation"
+        ) else "Needs review",
     }
+
+
 
 
 def build_final_conclusion(result):
