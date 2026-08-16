@@ -2499,10 +2499,17 @@ TEXT_MODEL_PREFERENCES = [
 # analyze_with_groq now tries each of these in order and only reports failure
 # once every candidate has been exhausted.
 VISION_MODEL_PREFERENCES = [
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+    "meta-llama/llama-4-maverick-17b-128e-instruct",
     "qwen/qwen3.6-27b",
-    "llama-3.2-90b-vision-preview",
-    "llama-3.2-11b-vision-preview",
 ]
+
+# Some vision models cap how many images can be sent in one request (e.g. Qwen
+# allows only 3). Keyed by model id; models not listed here use the default
+# cap applied in analyze_with_groq.
+VISION_MODEL_IMAGE_LIMITS = {
+    "qwen/qwen3.6-27b": 3,
+}
 
 
 def discover_models(client):
@@ -2661,8 +2668,13 @@ Not detected, Low, Medium, High.
         }
 
         if image_data_urls:
+            # Respect per-model image-count limits (e.g. Qwen accepts at most
+            # 3 images per request) instead of sending every frame/image and
+            # letting the API reject the whole call.
+            per_model_limit = VISION_MODEL_IMAGE_LIMITS.get(model, len(image_data_urls))
+            urls_for_model = image_data_urls[:per_model_limit]
             multimodal_content = [{"type": "text", "text": user_prompt}]
-            for image_url in image_data_urls:
+            for image_url in urls_for_model:
                 multimodal_content.append({
                     "type": "image_url",
                     "image_url": {"url": image_url},
