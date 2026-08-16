@@ -245,25 +245,38 @@ def is_scam_claim(category, verdict, summary=""):
 
 
 def normalize_result_consistency(result):
-    """Keep scam category, risk score and displayed verdict consistent."""
-    category = safe_text(result.get("threat_category", "Needs review"), "Needs review")
+    """Keep scam/phishing category, risk score and displayed verdict consistent."""
+    category = safe_text(
+        result.get("threat_category", "Needs review"),
+        "Needs review"
+    )
     verdict = safe_text(
         result.get("verdict", "Manual review recommended."),
         "Manual review recommended."
     )
     summary = safe_text(result.get("summary", ""))
 
-    if is_scam_claim(category, verdict, summary):
-        result["threat_category"] = "Scam"
+    combined_text = f"{category} {verdict} {summary}".lower()
+
+    is_scam = is_scam_claim(category, verdict, summary)
+    is_phishing = "phishing" in combined_text
+
+    if is_scam or is_phishing:
+        if is_scam:
+            result["threat_category"] = "Scam"
+
         result["risk_score"] = max(
             70,
             clamp_score(result.get("risk_score", 50))
         )
 
-        if not re.search(r"\bscam\b", verdict.lower()):
+        if is_scam and not re.search(r"\bscam\b", verdict.lower()):
             result["verdict"] = "This message is a scam and should not be trusted."
+
     else:
-        result["risk_score"] = clamp_score(result.get("risk_score", 50))
+        result["risk_score"] = clamp_score(
+            result.get("risk_score", 50)
+        )
 
     return result
 
