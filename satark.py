@@ -1522,7 +1522,6 @@ st.markdown('<div class="footer">SATARK • Smart AI Threat Analysis & Risk Know
 
 
 
-
 # 🧰 CORE PYTHON / SYSTEM
 import os
 import re
@@ -1547,7 +1546,6 @@ from groq import Groq
 # 📄 FILE & IMAGE PROCESSING
 from pypdf import PdfReader
 from PIL import Image
-from io import BytesIO
 
 # 📑 PDF GENERATION
 from reportlab.lib import colors
@@ -1832,11 +1830,6 @@ def normalize_result_consistency(result):
         combined_text
     ))
 
-    # IMPORTANT: Deepfake Risk must NOT be inferred merely because the model
-    # used the word "deepfake" in a sentence such as "no evidence of a deepfake".
-    # It is now taken from the structured threat_analysis field and/or forensic
-    # evidence supplied to the model.
-
     if is_scam or is_phishing:
         if is_scam:
             result["threat_category"] = "Scam"
@@ -2057,9 +2050,11 @@ def build_fallback_threat_analysis(result):
             "phishing", "credential", "login", "password", "otp"
         ) else "Needs review",
 
-        # Never infer a deepfake from a keyword in prose. If the structured
-        # model output did not provide a decision, leave this as review-needed.
-        "Deepfake Risk": "Needs review",
+        "Deepfake Risk": (
+            "High" if deepfake
+            else "Medium" if public_figure_claim
+            else "Low"
+        ),
 
         "Fake Information": "Detected" if fake_claim else "Needs review",
 
@@ -2324,80 +2319,6 @@ def single_file_fingerprint(uploaded_file):
     return digest.hexdigest()
 
 
-# ------------------- Image authenticity / forensic pre-check -------------------
-def _jpeg_ela_score(image):
-    """Estimate local JPEG recompression inconsistency (ELA-style).\n\n    This is a forensic *signal*, not a proof of manipulation. Different cameras,\n    screenshots and social platforms can also create high ELA values.\n    """
-    try:
-        if image.mode != "RGB":
-            image = image.convert("RGB")
-        work = image.copy()
-        work.thumbnail((1600, 1600))
-        buf = BytesIO()
-        work.save(buf, format="JPEG", quality=90)
-        buf.seek(0)
-        recompressed = Image.open(buf).convert("RGB")
-        import numpy as np
-        a = np.asarray(work, dtype=np.int16)
-        b = np.asarray(recompressed, dtype=np.int16)
-        diff = np.abs(a - b)
-        mean = float(diff.mean())
-        p95 = float(np.percentile(diff, 95))
-        return mean, p95
-    except Exception:
-        return None, None
-
-
-def image_forensic_report(uploaded_file):
-    """Collect conservative image-forensics signals before vision analysis."""
-    try:
-        uploaded_file.seek(0)
-        raw = uploaded_file.read()
-        if not raw:
-            return "Forensic pre-check: file was empty."
-        digest = hashlib.sha256(raw).hexdigest()[:16]
-        image = Image.open(BytesIO(raw))
-        fmt = safe_text(image.format, "unknown").upper()
-        width, height = image.size
-        mode = image.mode
-        exif = image.getexif() if hasattr(image, "getexif") else {}
-        exif_keys = []
-        try:
-            exif_keys = [str(k) for k in exif.keys()]
-        except Exception:
-            pass
-        ela_mean, ela_p95 = _jpeg_ela_score(image)
-        notes = [
-            f"SHA-256 prefix: {digest}",
-            f"Format: {fmt}; dimensions: {width}x{height}; pixel mode: {mode}",
-            f"Metadata fields present: {len(exif_keys)}",
-        ]
-        if ela_mean is not None:
-            notes.append(f"ELA-style recompression difference: mean={ela_mean:.2f}, p95={ela_p95:.2f}; treat only as a weak manipulation signal")
-        try:
-            import cv2
-            import numpy as np
-            arr = np.asarray(image.convert("RGB"))
-            gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
-            # Face count is contextual evidence only; it is not a deepfake detector.
-            cascade = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-            detector = cv2.CascadeClassifier(cascade)
-            faces = detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(40,40))
-            notes.append(f"Basic face detector: {len(faces)} face region(s) found")
-        except Exception:
-            notes.append("Basic face detector: unavailable; vision model should inspect faces directly")
-        notes.append("Forensic interpretation: these signals cannot prove authenticity or manipulation; combine them with visual evidence and model assessment.")
-        return "Forensic pre-check:\n- " + "\n- ".join(notes)
-    except Exception as exc:
-        return f"Forensic pre-check unavailable: {type(exc).__name__}"
-
-
-def images_forensic_report(uploaded_files, max_images=5):
-    reports = []
-    for idx, item in enumerate(list(uploaded_files or [])[:max_images], 1):
-        reports.append(f"Image {idx}:\n{image_forensic_report(item)}")
-    return "\n\n".join(reports)
-
-
 # ------------------- Video: frame + audio extraction -------------------
 # Videos are not sent to the vision model directly. Instead SATARK pulls a
 # handful of representative frames (evenly spaced through the clip) with
@@ -2405,7 +2326,8 @@ def images_forensic_report(uploaded_files, max_images=5):
 # audio-transcription path is unavailable in this environment, SATARK
 # degrades gracefully and explains what could not be analyzed rather than
 # crashing the whole scan.
-MAX_VIDEO_FRAMES = 3  # start / middle / end gives actual temporal coverage
+MAX_VIDEO_FRAMES = 2  # kept minimal — every extra frame competes with the
+# transcript and system prompt for the same tight tokens-per-minute budget
 MAX_VIDEO_BYTES = 200 * 1024 * 1024  # 200 MB safety cap for in-memory handling
 
 
@@ -2474,14 +2396,7 @@ def extract_video_frames(uploaded_file, max_frames=MAX_VIDEO_FRAMES):
                 raise ValueError("SATARK could not read any frames from this video.")
         else:
             target_frames = min(max_frames, frame_count)
-            if target_frames == 1:
-                indices = [0]
-            elif target_frames == 2:
-                indices = [0, frame_count - 1]
-            else:
-                # Deliberately sample across the timeline rather than adjacent frames.
-                indices = [0, frame_count // 2, frame_count - 1]
-                indices = indices[:target_frames]
+            indices = [int(i * (frame_count - 1) / max(1, target_frames - 1)) for i in range(target_frames)] if target_frames > 1 else [0]
             for idx in indices:
                 capture.set(cv2.CAP_PROP_POS_FRAMES, idx)
                 ok, frame_bgr = capture.read()
@@ -2529,73 +2444,51 @@ def pil_frames_to_data_urls(frames, max_side=512):
 
 
 def transcribe_video_audio(uploaded_file, client):
-    """Best-effort audio transcription.
-
-    Groq's speech endpoint has a 100 MB file limit, so SATARK first tries to
-    extract an MP3 audio track with ffmpeg. If ffmpeg is unavailable, it falls
-    back to the original file only when it is within the speech endpoint size
-    limit. Audio failure never prevents frame analysis.
-    """
-    import shutil
-    import subprocess
+    """Best-effort audio transcription via Groq Whisper. Returns "" if audio
+    extraction isn't available in this environment rather than failing the
+    whole video scan — frame analysis can still proceed without it."""
     import tempfile
+
+    try:
+        import cv2  # noqa: F401
+    except Exception:
+        return ""
 
     try:
         uploaded_file.seek(0)
         data = uploaded_file.read()
     except Exception:
         return ""
-    if not data:
-        return ""
 
     suffix = os.path.splitext(safe_text(getattr(uploaded_file, "name", "")))[1] or ".mp4"
-    src_path = None
-    audio_path = None
+    tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
             tmp.write(data)
-            src_path = tmp.name
+            tmp_path = tmp.name
 
-        ffmpeg = shutil.which("ffmpeg")
-        if ffmpeg:
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as audio_tmp:
-                audio_path = audio_tmp.name
-            cmd = [
-                ffmpeg, "-y", "-v", "error", "-i", src_path,
-                "-vn", "-ac", "1", "-ar", "16000", "-b:a", "64k", audio_path
-            ]
-            proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=90)
-            if proc.returncode == 0 and os.path.exists(audio_path) and os.path.getsize(audio_path) > 0:
-                if os.path.getsize(audio_path) <= 100 * 1024 * 1024:
-                    with open(audio_path, "rb") as audio_file:
-                        transcript = client.audio.transcriptions.create(
-                            file=("satark_audio.mp3", audio_file.read()),
-                            model="whisper-large-v3-turbo",
-                            response_format="text",
-                        )
-                    text = transcript if isinstance(transcript, str) else safe_text(getattr(transcript, "text", ""))
-                    return text.strip()[:5000]
-
-        # Fallback: some accounts/environments may accept the original media file.
-        if len(data) <= 100 * 1024 * 1024:
-            with open(src_path, "rb") as media_file:
-                transcript = client.audio.transcriptions.create(
-                    file=(os.path.basename(src_path), media_file.read()),
-                    model="whisper-large-v3-turbo",
-                    response_format="text",
-                )
-            text = transcript if isinstance(transcript, str) else safe_text(getattr(transcript, "text", ""))
-            return text.strip()[:5000]
-        return ""
+        with open(tmp_path, "rb") as audio_file:
+            transcript = client.audio.transcriptions.create(
+                file=(os.path.basename(tmp_path), audio_file.read()),
+                model="whisper-large-v3",
+                response_format="text",
+            )
+        text = transcript if isinstance(transcript, str) else safe_text(getattr(transcript, "text", ""))
+        # Kept short: on Groq's on-demand tier the tokens-per-minute budget is
+        # shared across the transcript, the system prompt, and every video
+        # frame in the same request, so a long transcript alone can blow the
+        # limit even with small images.
+        return text.strip()[:3000]
     except Exception:
+        # Audio may be silent, absent, or the account may lack Whisper access.
+        # Frame-only analysis is still useful, so don't raise here.
         return ""
     finally:
-        for path in (src_path, audio_path):
-            if path:
-                try:
-                    os.unlink(path)
-                except Exception:
-                    pass
+        if tmp_path:
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
 
 
 def get_client(api_key):
@@ -2619,10 +2512,11 @@ VISION_MODEL_PREFERENCES = [
     "qwen/qwen3.6-27b",
 ]
 
-# Some vision models cap how many images can be sent in one request. Keyed by
-# model id; models not listed here use the default cap applied in analyze_with_groq.
+# Some vision models cap how many images can be sent in one request (e.g. Qwen
+# allows only 3). Keyed by model id; models not listed here use the default
+# cap applied in analyze_with_groq.
 VISION_MODEL_IMAGE_LIMITS = {
-    "qwen/qwen3.6-27b": 5,
+    "qwen/qwen3.6-27b": 3,
 }
 
 
@@ -2673,18 +2567,10 @@ Rules:
   strong, unambiguous evidence → above 85. Do not default high.
 - Do not invent URLs, organizations, sender details, or facts not visible in the input.
 - For images/video frames: inspect visible text, URLs, QR content, logos, layout,
-  instructions, faces, facial geometry, lighting/reflections, edges, hands, teeth/eyes,
-  skin texture, inconsistent blur/sharpening, compositing boundaries, and other visible
-  signs of AI generation or manipulation. Treat any supplied forensic pre-check as weak
-  supporting evidence only; do NOT turn ELA, metadata, compression artifacts, or a face
-  detector result into a definitive deepfake claim. Identify factual claims (quotes,
-  endorsements, identities, affiliations) that may need verification. Do not classify as
-  Safe merely because it looks like a normal/professional graphic. Cybersecurity safety
-  and content authenticity are separate axes.
-- Deepfake Risk is an authenticity assessment, separate from scam risk. Only mark it
-  Detected/High when there is affirmative evidence of manipulation; if evidence is weak,
-  use Low/Needs review and explain the uncertainty. Never mark it high simply because the
-  word "deepfake" appears in the prompt or because an image is compressed.
+  instructions, and whether content may be AI-generated, manipulated, or a deepfake.
+  Identify factual claims (quotes, endorsements, identities, affiliations) that may need
+  verification. Do not classify as Safe merely because it looks like a normal/professional
+  graphic. Cybersecurity safety and content authenticity are separate axes.
 - For video: frames are a sample through the clip, not exhaustive — treat them as a
   sequence and reflect that limited sampling in confidence. If an audio transcript is
   included, combine spoken content (urgency, payment/credential requests) with the visual
@@ -3267,17 +3153,8 @@ if st.session_state.page == "Analyze":
                         f"Audio transcript:\n{transcript}" if transcript
                         else "Audio transcript: not available (silent, unsupported audio, or transcription unavailable in this environment)."
                     )
-                    frame_reports = []
-                    for i, frame in enumerate(frames, 1):
-                        temp = BytesIO()
-                        frame.save(temp, format="PNG")
-                        temp.seek(0)
-                        temp.name = f"frame_{i}.png"
-                        frame_reports.append(f"Frame {i}: {image_forensic_report(temp)}")
-                    forensic_notes = "\n\n".join(frame_reports)
                     prepared=(
-                        f"{content}\n{duration_note}Number of sampled frames: {len(image_data_urls)}.\n\n"
-                        f"{transcript_note}\n\n{forensic_notes}"
+                        f"{content}\n{duration_note}Number of sampled frames: {len(image_data_urls)}.\n\n{transcript_note}"
                     )
                 else:
                     if not uploaded: raise ValueError("Please upload at least one image.")
@@ -3285,8 +3162,7 @@ if st.session_state.page == "Analyze":
                     # from a previous scan from leaking into the new request.
                     image_data_urls=images_to_data_urls(uploaded[:5], max_images=5)
                     if not image_data_urls: raise ValueError("The selected image(s) could not be read.")
-                    forensic_notes = images_forensic_report(uploaded[:5], max_images=5)
-                    prepared=f"{content}\nNumber of images in this investigation: {len(image_data_urls)}\n\n{forensic_notes}"
+                    prepared=f"{content}\nNumber of images in this investigation: {len(image_data_urls)}"
                 prompt=f"User profile: {role}\nScanner mode: {mode}\n\n{prepared}"
                 result=analyze_with_groq(client,prompt,mode,role,image_data_urls,available)
             st.session_state.result=result
