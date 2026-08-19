@@ -1705,13 +1705,13 @@ a{color:#a99cff}
 }
 .hero h1{
     position:relative;margin:18px 0 12px;font-family:Sora,"Manrope",sans-serif;
-    font-size:clamp(3.05rem,8vw,6.2rem);line-height:.91;letter-spacing:-.075em;
+    font-size:clamp(2.1rem,5vw,3.6rem);line-height:.95;letter-spacing:-.06em;
     color:var(--text);
 }
 .hero h1 .hero-primary{display:inline-block;font-weight:450;color:#f3f3f6;font-size:.86em}
 .hero h1 .hero-secondary{display:inline-block;font-weight:450;color:#e6e6eb;font-size:.86em}
 .hero h1 .hero-brand{font-weight:850;color:#ffffff;background:linear-gradient(105deg,#ffffff 8%,#e2defe 55%,#a99cff 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
-.hero p{position:relative;max-width:780px;margin:0 auto;color:#bfc0c8;font-size:clamp(1rem,2vw,1.12rem);line-height:1.7}
+.hero p{position:relative;max-width:780px;margin:0 auto;color:#bfc0c8;font-size:clamp(.92rem,1.6vw,1rem);line-height:1.7}
 .hero p strong{color:#f0f0f3;font-weight:750}
 .hero-actions{margin-top:24px}
 .section-title{margin:2rem 0 .4rem;font-family:Sora;font-size:1.25rem;font-weight:750;color:#f2f2f5}.section-copy{margin:0 0 1rem;color:#d0d0d8;font-size:.9rem}.section-copy strong{color:#f0f0f3;font-weight:650}
@@ -1770,7 +1770,7 @@ textarea:focus,[data-testid="stTextInput"] input:focus{border-color:rgba(155,140
 [data-testid="stDownloadButton"] button p,[data-testid="stDownloadButton"] button span{color:#17171a!important;font-weight:800!important}
 [data-testid="stFileUploaderDropzoneInstructions"] div{color:#e9e9ef!important}
 
-@media(max-width:768px){.block-container{padding:.7rem .65rem 3rem}.hero{padding:3rem .85rem;border-radius:20px}.hero h1{font-size:clamp(2.65rem,12vw,4.2rem);line-height:.94}.hero p{font-size:.96rem}.scanner{min-height:82px;padding:9px}div[data-testid="stButton"]>button{width:100%}.result{padding:17px}}
+@media(max-width:768px){.block-container{padding:.7rem .65rem 3rem}.hero{padding:3rem .85rem;border-radius:20px}.hero h1{font-size:clamp(1.9rem,10vw,2.7rem);line-height:.98}.hero p{font-size:.88rem}.scanner{min-height:82px;padding:9px}div[data-testid="stButton"]>button{width:100%}.result{padding:17px}}
 </style>
 """,
     unsafe_allow_html=True,
