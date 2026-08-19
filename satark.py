@@ -1931,10 +1931,10 @@ div[data-testid="stButton"]>button[kind="primary"]{
 /* SCANNER / TOOLS */
 
 .scanner{
-    min-height:112px;
-    padding:16px 12px;
+    min-height:96px;
+    padding:12px 10px;
     border:1px solid var(--line);
-    border-radius:18px;
+    border-radius:14px;
     background:rgba(255,255,255,.035);
     text-align:center;
     display:flex;
@@ -1960,7 +1960,7 @@ div[data-testid="stButton"]>button[kind="primary"]{
 
 .scanner-title{
     margin-top:2px;
-    font-size:.98rem;
+    font-size:.88rem;
     font-weight:800;
     color:#f4f4f7;
 }
@@ -1970,7 +1970,7 @@ div[data-testid="stButton"]>button[kind="primary"]{
     color:#c9c9d2;
     font-size:.72rem;
     line-height:1.35;
-    max-width:150px;
+    max-width:135px;
 }
 
 .active{
@@ -2080,10 +2080,10 @@ textarea:focus,
 }
 
 .metric{
-    min-height:112px;
-    padding:17px;
+    min-height:96px;
+    padding:13px;
     border:1px solid var(--line);
-    border-radius:15px;
+    border-radius:13px;
     background:rgba(255,255,255,.03);
 }
 
@@ -2197,12 +2197,39 @@ textarea:focus,
     color:#bdbdc5;
 }
 
+
+/* COMPACT + SYMMETRIC CARDS */
+[data-testid="stHorizontalBlock"]{
+    align-items:stretch!important;
+    gap:0.7rem!important;
+}
+[data-testid="stHorizontalBlock"] > [data-testid="column"]{
+    display:flex!important;
+    align-items:stretch!important;
+}
+.scanner,
+.feature-card,
+.metric,
+.evidence,
+.action,
+.info-card,
+.challenge-card{
+    width:100%!important;
+    margin:0!important;
+}
+.scanner-title{
+    line-height:1.2;
+}
+.scanner-copy{
+    line-height:1.25;
+}
+
 /* FEATURE CARDS */
 
 .feature-card{
-    padding:20px;
+    padding:15px;
     border:1px solid var(--line);
-    border-radius:18px;
+    border-radius:14px;
     background:rgba(255,255,255,.03);
     height:100%;
 }
@@ -2478,8 +2505,8 @@ textarea:focus,
     }
 
     .scanner{
-        min-height:100px;
-        padding:12px 9px;
+        min-height:88px;
+        padding:10px 8px;
     }
 
     .scanner-icon{
