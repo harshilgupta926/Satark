@@ -280,6 +280,36 @@ def is_scam_claim(category, verdict, summary=""):
 
 
 
+    def has_unverified_public_figure_claim(result):
+    """Generic detector: flags any unverified real-person + endorsement/authority
+    claim pattern, without hardcoding specific names, roles, or countries."""
+    text = " ".join([
+        safe_text(result.get("summary", "")),
+        safe_text(result.get("verdict", "")),
+        " ".join(result.get("key_indicators", [])),
+    ]).lower()
+
+    endorsement_terms = (
+        r"brand ambassador", r"endorses?", r"endorsement",
+        r"official partner", r"spokesperson", r"testimonial",
+        r"partners? with", r"backed by", r"recommended by"
+    )
+    authority_or_fame_terms = (
+        r"prime minister", r"president", r"minister", r"chief minister",
+        r"governor", r"judge", r"official\b", r"government (?:body|agency|official)",
+        r"celebrity", r"public figure", r"ceo\b", r"chairman", r"actor",
+        r"cricketer", r"athlete", r"influencer"
+    )
+
+    endorsement_re = "|".join(endorsement_terms)
+    authority_re = "|".join(authority_or_fame_terms)
+
+    pattern = rf"\b({endorsement_re})\b.{{0,60}}\b({authority_re})\b|\b({authority_re})\b.{{0,60}}\b({endorsement_re})\b"
+    return bool(re.search(pattern, text))
+
+
+
+
 def normalize_result_consistency(result):
     """Keep scam/phishing category, risk score and displayed verdict consistent."""
     category = safe_text(
@@ -320,6 +350,11 @@ def normalize_result_consistency(result):
         result["risk_score"] = clamp_score(
             result.get("risk_score", 50)
         )
+
+    if has_unverified_public_figure_claim(result) and result["risk_score"] < 40:
+        result["risk_score"] = max(40, result["risk_score"])
+        if result["threat_category"] in ("Safe", "Needs review"):
+            result["threat_category"] = "Unverified Claim"
 
     return result
 
@@ -2566,22 +2601,39 @@ Rules:
 - Confidence must reflect evidence strength: weak/ambiguous evidence → below 50; only
   strong, unambiguous evidence → above 85. Do not default high.
 - Do not invent URLs, organizations, sender details, or facts not visible in the input.
+- CRITICAL: Professional visual quality (clean logo, good typography, polished layout)
+  is NOT evidence of truthfulness. A fabricated or AI-generated endorsement can look just
+  as polished as a real one. Never let visual/production quality lower your Fake
+  Information, Impersonation, or Deepfake Risk scores — judge those on the plausibility
+  of the underlying claim, not the graphic design.
+- For any image that asserts a specific named real person did/said/endorsed something,
+  treat this as an unverified factual claim requiring scrutiny, not just a design
+  element. Explicitly reason about real-world plausibility given who the person is and
+  what role or position they are commonly known for (e.g. a person widely known to hold
+  a government office, judicial role, regulatory position, or similar public-trust role
+  making a commercial product endorsement is unusual and often against normal conduct
+  norms — flag this tension). This applies generally to any named real person, not only
+  political figures — also apply it to claimed celebrity, executive, or institutional
+  endorsements that seem inconsistent with what is publicly known about that person or
+  organization. Raise Fake Information / Impersonation to at least Medium when such a
+  claim cannot be corroborated from the image alone.
 - For images/video frames: inspect visible text, URLs, QR content, logos, layout,
   instructions, and whether content may be AI-generated, manipulated, or a deepfake.
   Identify factual claims (quotes, endorsements, identities, affiliations) that may need
-  verification. Do not classify as Safe merely because it looks like a normal/professional
-  graphic. Cybersecurity safety and content authenticity are separate axes.
-- For video: frames are a sample through the clip, not exhaustive — treat them as a
-  sequence and reflect that limited sampling in confidence. If an audio transcript is
-  included, combine spoken content (urgency, payment/credential requests) with the visual
-  evidence. If no transcript is provided, rely on frames only and say so.
+  verification. Do NOT classify as Safe merely because it looks like a normal/professional
+  graphic — cybersecurity safety and content authenticity are separate axes, and a "Safe"
+  cybersecurity verdict must not imply the claims shown are true.
+- If the image depicts a real, named person making an endorsement/claim that you cannot
+  verify from the image alone, the verdict and summary MUST state plainly that this
+  cannot be confirmed as genuine and should be independently verified before belief or
+  sharing — do not phrase this as an optional suggestion buried only in recommendations.
 - For URLs: consider domain mismatch, redirects, credential requests, urgency, impersonation.
 
 Return ONLY valid JSON, no markdown, no code fences. Required schema:
 {
   "risk_score": 0,
   "confidence": 0,
-  "threat_category": "Safe / Phishing / Scam / Malware / Impersonation / Suspicious Link / Payment Fraud / Account Takeover / Other",
+  "threat_category": "Safe / Phishing / Scam / Malware / Impersonation / Suspicious Link / Payment Fraud / Account Takeover / Unverified Claim / Other",
   "verdict": "one short sentence",
   "summary": "2-4 sentence plain-English explanation",
   "key_indicators": ["indicator 1", "indicator 2"],
