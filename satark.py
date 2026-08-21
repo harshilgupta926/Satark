@@ -3889,12 +3889,13 @@ if st.session_state.page == "Analyze":
     st.markdown('<div id="satark-input-anchor"></div>', unsafe_allow_html=True)
     if st.session_state.get("scroll_to_input"):
         components.html(
-            """
+            f"""
             <script>
-            setTimeout(function() {
+            // unique token so this always re-runs: {mode}-{datetime.now().timestamp()}
+            setTimeout(function() {{
                 const el = window.parent.document.getElementById('satark-input-anchor');
-                if (el) { el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
-            }, 100);
+                if (el) {{ el.scrollIntoView({{behavior: 'smooth', block: 'start'}}); }}
+            }}, 100);
             </script>
             """,
             height=0,
