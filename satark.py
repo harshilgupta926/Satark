@@ -1750,6 +1750,33 @@ html,body,[class*="css"]{
     font-family:"Manrope",sans-serif;
 }
 
+/* SCANNER CARD — WHOLE-CARD CLICKABLE OVERLAY */
+
+.scanner-wrap {
+    position: relative !important;
+}
+
+.scanner-wrap div[data-testid="stButton"] {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 10 !important;
+}
+
+.scanner-wrap div[data-testid="stButton"] > button {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    opacity: 0 !important;
+    cursor: pointer !important;
+    border: 0 !important;
+    background: transparent !important;
+}
+
 body{
     background:var(--bg);
     color:var(--text);
