@@ -1640,6 +1640,89 @@ st.set_page_config(
 
 # ----------------------------- CSS ----------------------------
 
+# 🧰 CORE PYTHON / SYSTEM
+import os
+import re
+import json
+import base64
+import hashlib
+import socket
+import ipaddress
+import html
+from datetime import datetime
+
+# 🌐 WEB / URL HANDLING
+from html.parser import HTMLParser
+from urllib.parse import urlparse
+from urllib.request import Request, urlopen, HTTPRedirectHandler, build_opener
+from urllib.error import HTTPError, URLError
+
+# 🤖 AI / WEB APP
+import streamlit as st
+import streamlit.components.v1 as components
+from groq import Groq
+
+# 📄 FILE & IMAGE PROCESSING
+from pypdf import PdfReader
+from PIL import Image
+
+# 📑 PDF GENERATION
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer,
+    Table, TableStyle, PageBreak, KeepTogether
+)
+
+# ============================================================
+# SATARK — Smart AI Threat Analysis & Risk Knowledge
+# FINAL single-file Streamlit application
+#
+# Keeps the original SATARK analysis flow, while adding:
+# - automatic Groq model discovery
+# - resilient vision-model selection (now with fallback chain)
+# - improved result presentation
+# - session history + report export
+# - Scam Challenge
+# - SATARK Academy
+# - Classroom Mode
+# - evidence / confidence / actions
+# - privacy-first session storage
+#
+# CHANGES IN THIS VERSION:
+# 1. calibrate_confidence() no longer force-floors confidence to 95-99.99%.
+#    It now reports a value that actually reflects model + evidence strength,
+#    across the full 0-100 range.
+# 2. render_result() color-codes the confidence metric (red/amber/green)
+#    so low-confidence results are visually distinct.
+# 3. VISION_MODEL_PREFERENCES is now a real fallback chain instead of a
+#    single hardcoded model; analyze_with_groq tries each in order instead
+#    of giving up after the first failure.
+# 4. is_scam_claim / normalize_result_consistency now trust the model's
+#    explicit threat_category field first, and only fall back to regex
+#    parsing of prose when the category is missing/ambiguous. This makes
+#    scam/phishing detection less fragile to wording changes.
+# 5. SYSTEM_PROMPT's confidence instruction is now explicit about using the
+#    full 0-100 range honestly instead of defaulting high.
+# 6. NEW: Video scanner mode. Videos are analyzed by extracting a handful of
+#    representative frames (via OpenCV) and, when ffmpeg/moviepy is available,
+#    transcribing the audio track (via Groq Whisper) so speech-based scam
+#    signals aren't missed. Frames + transcript are fed into the same
+#    analyze_with_groq pipeline used for images/text.
+# ============================================================
+
+st.set_page_config(
+    page_title="SATARK — AI Threat Analyzer",
+    page_icon="◈",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# ----------------------------- CSS ----------------------------
+
 st.markdown(
     """
 <style>
@@ -1981,6 +2064,25 @@ div[data-testid="stButton"]>button[kind="primary"]{
     box-shadow:
         0 0 0 1px rgba(155,140,255,.12),
         0 12px 30px rgba(0,0,0,.22);
+}
+
+/* SCANNER CARD — WHOLE-CARD CLICKABLE OVERLAY
+   Wraps a .scanner card + an invisible, fully-stretched
+   st.button so clicking anywhere on the card triggers it,
+   instead of needing a separate visible button underneath. */
+
+.scanner-wrap { position: relative; }
+
+.scanner-wrap div[data-testid="stButton"] {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+}
+
+.scanner-wrap div[data-testid="stButton"] > button {
+    width: 100%; height: 100%;
+    opacity: 0;
+    cursor: pointer;
 }
 
 /* INPUTS */
