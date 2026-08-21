@@ -3852,9 +3852,10 @@ with st.sidebar:
 st.markdown('<section class="hero"><div class="pill">AI SECURITY • EXPLAIN • LEARN • PROTECT</div><h1><span class="hero-primary">Think it’s a scam?</span><br><span class="hero-secondary">Let <span class="hero-brand">SATARK</span> check it.</span></h1><p><strong>Paste a message, inspect a link, upload a screenshot, video, or analyze a PDF.</strong><br>SATARK explains the risk in simple language and shows the evidence behind its assessment.</p></section>',unsafe_allow_html=True)
 
 # --------------------------- Pages -----------------------------
+# --------------------------- Pages -----------------------------
 if st.session_state.page == "Analyze":
     st.markdown('<div class="section-title">What do you want to check?</div><div class="section-copy">Choose a scanner. Your original six SATARK modes remain available, plus Video.</div>',unsafe_allow_html=True)
-    scanner_rows=[[('Text','💬','Messages, posts and suspicious text'),('URL','🔗','Websites and suspicious links'),('Image','🖼️','Screenshots and images')],[('Email','📧','Phishing and fraudulent emails'),('PDF','📄','Text-based documents'),('QR','▣','QR screenshots and QR-related images')],[('Video','🎬','Suspicious clips, reels and voice-call recordings')]]
+    scanner_rows=[[('Text','💬','Messages, posts and suspicious text'),('URL','🔗','Websites and suspicious links'),('Image','🖼️','Screenshots and images')],[('PDF','📄','Text-based documents'),('QR','▣','QR screenshots and QR-related images')],[('Video','🎬','Suspicious clips, reels and voice-call recordings')]]
     for row in scanner_rows:
         cols=st.columns(3)
         for col,(name,icon,copy) in zip(cols,row):
@@ -3867,9 +3868,8 @@ if st.session_state.page == "Analyze":
     mode=st.session_state.mode
     st.markdown(f'<div class="section-title">🔎 Security Analysis</div><div class="section-copy">Selected: <strong>{mode}</strong></div>',unsafe_allow_html=True)
     uploaded=None; image_data_urls=[]; video_file=None; transcribe_audio=True
-    if mode in {"Text","Email"}:
-        placeholder="Paste the email body, sender message, subject, or suspicious email here..." if mode=="Email" else "Paste any message, post, SMS, social-media content or suspicious text here..."
-        content=st.text_area("Enter content",height=230,placeholder=placeholder,key=f"text_input_{mode}")
+    if mode=="Text":
+        content=st.text_area("Enter content",height=230,placeholder="Paste any message, post, SMS, social-media content or suspicious text here...",key=f"text_input_{mode}")
     elif mode=="URL":
         content=st.text_input("Website URL",placeholder="https://example.com",key="url_input")
     elif mode=="PDF":
@@ -3934,7 +3934,7 @@ if st.session_state.page == "Analyze":
                 # Groq accounts can successfully call a model even when the
                 # listing response is incomplete, and vice versa. The actual
                 # completion request in analyze_with_groq is the source of truth.
-                if mode in {"Text","Email"}:
+                if mode=="Text":
                     if not safe_text(content): raise ValueError("Please enter some content to analyze.")
                     prepared=content[:50000]
                 elif mode=="URL":
@@ -3955,6 +3955,8 @@ if st.session_state.page == "Analyze":
                     image_data_urls = pil_frames_to_data_urls(frames)
                     if not image_data_urls:
                         raise ValueError("SATARK could not extract usable frames from this video.")
+                    if warnings:
+                        st.warning("⚠️ " + " ".join(warnings))
                     transcript = ""
                     if transcribe_audio:
                         transcript = transcribe_video_audio(video_file, client)
