@@ -1325,7 +1325,7 @@ def add_history(result, mode):
 # ----------------------- Session state -------------------------
 def init_state():
     defaults={
-        "mode":"Text","result":None,"history":[],"page":"Analyze",
+        "mode":"Text","result":None,"history":[],
         "challenge_index":0,"challenge_score":0,"challenge_answered":False,
         "available_models":set(),"text_model":None,"vision_model":None,
         "last_input_fingerprint":"","analysis_request_id":"",
@@ -3830,7 +3830,7 @@ def add_history(result, mode):
 # ----------------------- Session state -------------------------
 def init_state():
     defaults={
-        "mode":"Text","result":None,"history":[],"page":"Analyze",
+        "mode":"Text","result":None,"history":[],"page":"Home",
         "challenge_index":0,"challenge_score":0,"challenge_answered":False,
         "available_models":set(),"text_model":None,"vision_model":None,
         "last_input_fingerprint":"","analysis_request_id":"",
@@ -3843,7 +3843,7 @@ init_state()
 with st.sidebar:
     st.markdown('<div class="brand"><div class="brand-logo">SATARK <span class="brand-dot">◦</span></div><div class="brand-tag">Smart AI Threat Analysis & Risk Knowledge</div></div>',unsafe_allow_html=True)
     st.markdown('<div class="side-label">Navigate</div>',unsafe_allow_html=True)
-    for page,label in [("Analyze","🔎 Check something"),("History","🕘 History"),("Challenge","🎯 Scam Challenge"),("Academy","🎓 SATARK Academy"),("Classroom","👨‍🏫 Classroom Mode")]:
+    for page,label in [("Home","🏠 Home"),("Analyze","🔎 Check something"),("History","🕘 History"),("Challenge","🎯 Scam Challenge"),("Academy","🎓 SATARK Academy"),("Classroom","👨‍🏫 Classroom Mode")]:
         if st.button(label,key=f"nav_{page}",use_container_width=True): st.session_state.page=page; st.rerun()
     st.markdown('<div class="side-label">API configuration</div>',unsafe_allow_html=True)
     env_key=os.getenv("GROQ_API_KEY","")
@@ -3867,7 +3867,15 @@ with st.sidebar:
 st.markdown('<section class="hero"><div class="pill">AI SECURITY • EXPLAIN • LEARN • PROTECT</div><h1><span class="hero-primary">Think it’s a scam?</span><br><span class="hero-secondary">Let <span class="hero-brand">SATARK</span> check it.</span></h1><p><strong>Paste a message, inspect a link, upload a screenshot, video, or analyze a PDF.</strong><br>SATARK explains the risk in simple language and shows the evidence behind its assessment.</p></section>',unsafe_allow_html=True)
 
 # --------------------------- Pages -----------------------------
-if st.session_state.page == "Analyze":
+if st.session_state.page == "Home":
+    st.markdown('<section class="hero"><div class="pill">AI SECURITY • EXPLAIN • LEARN • PROTECT</div><h1><span class="hero-primary">Think it’s a scam?</span><br><span class="hero-secondary">Let <span class="hero-brand">SATARK</span> check it.</span></h1><p><strong>Paste a message, inspect a link, upload a screenshot or analyze a PDF.</strong><br>SATARK explains the risk in simple language and shows the evidence behind its assessment.</p></section>',unsafe_allow_html=True)
+    st.markdown('<div class="analyze">', unsafe_allow_html=True)
+    if st.button("🔍 Let SATARK Check It", use_container_width=True, type="primary", key="goto_analyze"):
+        st.session_state.page = "Analyze"
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+elif st.session_state.page == "Analyze":
     st.markdown('<div class="section-title">What do you want to check?</div><div class="section-copy">Choose a scanner. Your original six SATARK modes remain available, plus Video.</div>',unsafe_allow_html=True)
     scanner_rows=[[('Text','💬','Messages, posts and suspicious text'),('URL','🔗','Websites and suspicious links'),('Image','🖼️','Screenshots and images')],[('PDF','📄','Text-based documents'),('QR','▣','QR screenshots and QR-related images'),('Video','🎬','Suspicious clips, reels and voice-call recordings')]]
     for row in scanner_rows:
