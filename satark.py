@@ -3855,7 +3855,7 @@ st.markdown('<section class="hero"><div class="pill">AI SECURITY • EXPLAIN •
 # --------------------------- Pages -----------------------------
 if st.session_state.page == "Analyze":
     st.markdown('<div class="section-title">What do you want to check?</div><div class="section-copy">Choose a scanner. Your original six SATARK modes remain available, plus Video.</div>',unsafe_allow_html=True)
-    scanner_rows=[[('Text','💬','Messages, posts and suspicious text'),('URL','🔗','Websites and suspicious links'),('Image','🖼️','Screenshots and images')],[('PDF','📄','Text-based documents'),('QR','▣','QR screenshots and QR-related images')],[('Video','🎬','Suspicious clips, reels and voice-call recordings')]]
+    scanner_rows=[[('Text','💬','Messages, posts and suspicious text'),('URL','🔗','Websites and suspicious links'),('Image','🖼️','Screenshots and images')],[('PDF','📄','Text-based documents'),('QR','▣','QR screenshots and QR-related images'),('Video','🎬','Suspicious clips, reels and voice-call recordings')]]
     for row in scanner_rows:
         cols=st.columns(3)
         for col,(name,icon,copy) in zip(cols,row):
