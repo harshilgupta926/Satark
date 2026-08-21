@@ -3867,7 +3867,6 @@ with st.sidebar:
 st.markdown('<section class="hero"><div class="pill">AI SECURITY • EXPLAIN • LEARN • PROTECT</div><h1><span class="hero-primary">Think it’s a scam?</span><br><span class="hero-secondary">Let <span class="hero-brand">SATARK</span> check it.</span></h1><p><strong>Paste a message, inspect a link, upload a screenshot, video, or analyze a PDF.</strong><br>SATARK explains the risk in simple language and shows the evidence behind its assessment.</p></section>',unsafe_allow_html=True)
 
 # --------------------------- Pages -----------------------------
-# --------------------------- Pages -----------------------------
 if st.session_state.page == "Analyze":
     st.markdown('<div class="section-title">What do you want to check?</div><div class="section-copy">Choose a scanner. Your original six SATARK modes remain available, plus Video.</div>',unsafe_allow_html=True)
     scanner_rows=[[('Text','💬','Messages, posts and suspicious text'),('URL','🔗','Websites and suspicious links'),('Image','🖼️','Screenshots and images')],[('PDF','📄','Text-based documents'),('QR','▣','QR screenshots and QR-related images'),('Video','🎬','Suspicious clips, reels and voice-call recordings')]]
@@ -3878,9 +3877,30 @@ if st.session_state.page == "Analyze":
                 active=st.session_state.mode==name
                 st.markdown(f'<div class="scanner {"active" if active else ""}"><div class="scanner-icon">{icon}</div><div class="scanner-title">{name}</div><div class="scanner-copy">{copy}</div></div>',unsafe_allow_html=True)
                 if st.button(f"Use {name}",key=f"scanner_{name}",use_container_width=True):
-                    st.session_state.mode=name; st.session_state.result=None; st.session_state.last_input_fingerprint=""; st.session_state.analysis_request_id=""; st.rerun()
+                    st.session_state.mode=name; st.session_state.result=None; st.session_state.last_input_fingerprint=""; st.session_state.analysis_request_id=""
+                    st.session_state.scroll_to_input = True
+                    st.rerun()
 
     mode=st.session_state.mode
+
+    # Invisible anchor + one-time smooth scroll to the input section after a
+    # scanner card is selected, so the user lands on the input box without
+    # manually scrolling down.
+    st.markdown('<div id="satark-input-anchor"></div>', unsafe_allow_html=True)
+    if st.session_state.get("scroll_to_input"):
+        components.html(
+            """
+            <script>
+            setTimeout(function() {
+                const el = window.parent.document.getElementById('satark-input-anchor');
+                if (el) { el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
+            }, 100);
+            </script>
+            """,
+            height=0,
+        )
+        st.session_state.scroll_to_input = False
+
     st.markdown(f'<div class="section-title">🔎 Security Analysis</div><div class="section-copy">Selected: <strong>{mode}</strong></div>',unsafe_allow_html=True)
     uploaded=None; image_data_urls=[]; video_file=None; transcribe_audio=True
     if mode=="Text":
