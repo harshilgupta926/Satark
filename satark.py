@@ -3902,6 +3902,8 @@ elif st.session_state.page == "Analyze":
     # "Let SATARK Check It" from the Home page.
     if st.session_state.get("scroll_to_scanners", False):
 
+        import streamlit.components.v1 as components
+
         components.html(
             """
             <script>
@@ -3984,9 +3986,11 @@ elif st.session_state.page == "Analyze":
                     st.session_state.last_input_fingerprint = ""
                     st.session_state.analysis_request_id = ""
 
-                    # After rerun, automatically scroll to the selected
-                    # scanner's Security Analysis input section.
-                    st.session_state.scroll_to_input = True
+                    # Unique trigger for EVERY scanner click.
+                    # This makes the auto-scroll repeat indefinitely.
+                    st.session_state.scroll_to_input_trigger = (
+                        st.session_state.get("scroll_to_input_trigger", 0) + 1
+                    )
 
                     st.rerun()
 
@@ -4002,40 +4006,77 @@ elif st.session_state.page == "Analyze":
     # AUTO-SCROLL TO INPUT SECTION
     # ==========================================================
 
-    # Invisible anchor immediately above Security Analysis.
-    # This is the exact position the page scrolls to after a scanner
-    # card is selected.
+    # Invisible anchor immediately above Security Analysis
     st.markdown(
-        '<div id="satark-input-anchor" style="scroll-margin-top: 24px;"></div>',
+        '<div id="satark-input-anchor"></div>',
         unsafe_allow_html=True
     )
 
-    if st.session_state.get("scroll_to_input", False):
+    # A new number is generated every time one of the scanner
+    # buttons is clicked. We only handle each number once, so
+    # normal Streamlit reruns (typing/uploading) do not cause
+    # unwanted scrolling.
+    scroll_trigger = st.session_state.get(
+        "scroll_to_input_trigger",
+        0
+    )
+
+    handled_trigger = st.session_state.get(
+        "handled_scroll_to_input_trigger",
+        0
+    )
+
+    if scroll_trigger != handled_trigger:
+        import streamlit.components.v1 as components
 
         components.html(
             f"""
             <script>
-            setTimeout(function() {{
+            (function() {{
+                const trigger = "{scroll_trigger}";
+                let attempts = 0;
 
-                const el =
-                    window.parent.document.getElementById(
-                        'satark-input-anchor'
+                function scrollToSATARKInput() {{
+                    const parentDoc = window.parent.document;
+
+                    const el = parentDoc.getElementById(
+                        "satark-input-anchor"
                     );
 
-                if (el) {{
-                    el.scrollIntoView({{
-                        behavior: 'smooth',
-                        block: 'start'
-                    }});
+                    if (el) {{
+                        el.scrollIntoView({{
+                            behavior: "smooth",
+                            block: "start"
+                        }});
+                        return true;
+                    }}
+
+                    return false;
                 }}
 
-            }}, 500);
+                // Streamlit renders asynchronously after reruns,
+                // so retry briefly until the anchor is available.
+                const timer = setInterval(function() {{
+                    attempts++;
+
+                    if (
+                        scrollToSATARKInput() ||
+                        attempts >= 20
+                    ) {{
+                        clearInterval(timer);
+                    }}
+                }}, 100);
+            }})();
             </script>
             """,
             height=0,
         )
 
-        st.session_state.scroll_to_input = False
+        # Mark this trigger as handled. The next scanner click
+        # creates a new trigger and therefore scrolls again.
+        st.session_state.handled_scroll_to_input_trigger = (
+            scroll_trigger
+        )
 
 
     # ==========================================================
