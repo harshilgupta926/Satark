@@ -4074,10 +4074,10 @@ elif st.session_state.page == "Analyze":
         [
             ("Text", "💬", "Messages, posts and suspicious text"),
             ("URL", "🔗", "Websites and suspicious links"),
-            ("Image", "🖼️", "Screenshots and images")
+            ("Image", "🖼️", "Suspicious Screenshots and images")
         ],
         [
-            ("PDF", "📄", "Text-based documents"),
+            ("PDF", "📄", "Fraudlent Text-based documents"),
             ("QR", "▣", "QR screenshots and QR-related images"),
             ("Video", "🎬", "Suspicious clips, reels and voice-call recordings")
         ]
