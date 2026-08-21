@@ -1576,6 +1576,7 @@ from urllib.error import HTTPError, URLError
 
 # 🤖 AI / WEB APP
 import streamlit as st
+import streamlit.components.v1 as components
 from groq import Groq
 
 # 📄 FILE & IMAGE PROCESSING
@@ -1638,6 +1639,7 @@ st.set_page_config(
 )
 
 # ----------------------------- CSS ----------------------------
+
 st.markdown(
     """
 <style>
@@ -2205,7 +2207,18 @@ textarea:focus,
 }
 [data-testid="stHorizontalBlock"] > [data-testid="column"]{
     display:flex!important;
+    flex-direction:column!important;
     align-items:stretch!important;
+}
+[data-testid="stHorizontalBlock"] > [data-testid="column"] > div{
+    display:flex!important;
+    flex-direction:column!important;
+    flex:1 1 auto!important;
+}
+[data-testid="stHorizontalBlock"] > [data-testid="column"] div[data-testid="stMarkdownContainer"]{
+    display:flex!important;
+    flex-direction:column!important;
+    flex:1 1 auto!important;
 }
 .scanner,
 .feature-card,
@@ -2215,7 +2228,10 @@ textarea:focus,
 .info-card,
 .challenge-card{
     width:100%!important;
+    height:100%!important;
+    flex:1 1 auto!important;
     margin:0!important;
+    justify-content:center!important;
 }
 .scanner-title{
     line-height:1.2;
@@ -2533,7 +2549,6 @@ textarea:focus,
 """,
     unsafe_allow_html=True,
 )
-
 # --------------------------- Helpers --------------------------
 
 def safe_text(value, default=""):  # cleans the text
