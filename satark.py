@@ -3868,7 +3868,7 @@ st.markdown('<section class="hero"><div class="pill">AI SECURITY • EXPLAIN •
 
 # --------------------------- Pages -----------------------------
 if st.session_state.page == "Home":
-    st.markdown('<section class="hero"><div class="pill">AI SECURITY • EXPLAIN • LEARN • PROTECT</div><h1><span class="hero-primary">Think it’s a scam?</span><br><span class="hero-secondary">Let <span class="hero-brand">SATARK</span> check it.</span></h1><p><strong>Paste a message, inspect a link, upload a screenshot or analyze a PDF.</strong><br>SATARK explains the risk in simple language and shows the evidence behind its assessment.</p></section>',unsafe_allow_html=True)
+
     st.markdown('<div class="analyze">', unsafe_allow_html=True)
     if st.button("🔍 Let SATARK Check It", use_container_width=True, type="primary", key="goto_analyze"):
         st.session_state.page = "Analyze"
