@@ -3869,273 +3869,1265 @@ st.markdown('<section class="hero"><div class="pill">AI SECURITY • EXPLAIN •
 # --------------------------- Pages -----------------------------
 # --------------------------- Pages -----------------------------
 
-
-
-# --------------------------- Pages -----------------------------
 if st.session_state.page == "Home":
 
     st.markdown('<div class="analyze">', unsafe_allow_html=True)
-    if st.button("Let SATARK Check It", use_container_width=True, type="primary", key="goto_analyze"):
+
+    if st.button(
+        "Let SATARK Check It",
+        use_container_width=True,
+        type="primary",
+        key="goto_analyze"
+    ):
         st.session_state.page = "Analyze"
         st.session_state.scroll_to_scanners = True
         st.rerun()
+
     st.markdown('</div>', unsafe_allow_html=True)
 
+
 elif st.session_state.page == "Analyze":
-    st.markdown('<div id="satark-scanner-anchor"></div>', unsafe_allow_html=True)
-    
-    if st.session_state.get("scroll_to_scanners"):
+
+    # ==========================================================
+    # AUTO-SCROLL TO SCANNER SECTION
+    # ==========================================================
+
+    # Invisible anchor placed immediately before scanner cards
+    st.markdown(
+        '<div id="satark-scanner-anchor"></div>',
+        unsafe_allow_html=True
+    )
+
+    # Scroll to scanner section only after clicking
+    # "Let SATARK Check It" from the Home page.
+    if st.session_state.get("scroll_to_scanners", False):
+
         import streamlit.components.v1 as components
-        from datetime import datetime
+
         components.html(
-            f"""
+            """
             <script>
-            setTimeout(function() {{
-                const el = window.parent.document.getElementById('satark-scanner-anchor');
-                if (el) {{ el.scrollIntoView({{behavior: 'smooth', block: 'start'}}); }}
-            }}, 100);
+            setTimeout(function() {
+
+                const el =
+                    window.parent.document.getElementById(
+                        'satark-scanner-anchor'
+                    );
+
+                if (el) {
+                    el.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+
+            }, 300);
             </script>
             """,
             height=0,
         )
+
         st.session_state.scroll_to_scanners = False
 
-    st.markdown('<div class="section-title">What do you want to check?</div><div class="section-copy">Choose a scanner. Your original six SATARK modes remain available, plus Video.</div>',unsafe_allow_html=True)
-    scanner_rows=[[('Text','','Messages, posts and suspicious text'),('URL','','Websites and suspicious links'),('Image','','Screenshots and images')],[('PDF','','Text-based documents'),('QR','','QR screenshots and QR-related images'),('Video','','Suspicious clips, reels and voice-call recordings')]]
+
+    # ==========================================================
+    # SCANNER SELECTION
+    # ==========================================================
+
+    st.markdown(
+        '<div class="section-title">What do you want to check?</div>'
+        '<div class="section-copy">'
+        'Choose a scanner. Your original six SATARK modes remain available, plus Video.'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+    scanner_rows = [
+        [
+            ("Text", "💬", "Messages, posts and suspicious text"),
+            ("URL", "🔗", "Websites and suspicious links"),
+            ("Image", "🖼️", "Screenshots and images")
+        ],
+        [
+            ("PDF", "📄", "Text-based documents"),
+            ("QR", "▣", "QR screenshots and QR-related images"),
+            ("Video", "🎬", "Suspicious clips, reels and voice-call recordings")
+        ]
+    ]
+
     for row in scanner_rows:
-        cols=st.columns(3)
-        for col,(name,icon,copy) in zip(cols,row):
+
+        cols = st.columns(3)
+
+        for col, (name, icon, copy) in zip(cols, row):
+
             with col:
-                active=st.session_state.mode==name
-                st.markdown(f'<div class="scanner {"active" if active else ""}"><div class="scanner-icon">{icon}</div><div class="scanner-title">{name}</div><div class="scanner-copy">{copy}</div></div>',unsafe_allow_html=True)
-                if st.button(f"Use {name}",key=f"scanner_{name}",use_container_width=True):
-                    st.session_state.mode=name; st.session_state.result=None; st.session_state.last_input_fingerprint=""; st.session_state.analysis_request_id=""
+
+                active = st.session_state.mode == name
+
+                st.markdown(
+                    f'''
+                    <div class="scanner {"active" if active else ""}">
+                        <div class="scanner-icon">{icon}</div>
+                        <div class="scanner-title">{name}</div>
+                        <div class="scanner-copy">{copy}</div>
+                    </div>
+                    ''',
+                    unsafe_allow_html=True
+                )
+
+                if st.button(
+                    f"Use {name}",
+                    key=f"scanner_{name}",
+                    use_container_width=True
+                ):
+                    st.session_state.mode = name
+                    st.session_state.result = None
+                    st.session_state.last_input_fingerprint = ""
+                    st.session_state.analysis_request_id = ""
                     st.session_state.scroll_to_input = True
+
                     st.rerun()
 
-    mode=st.session_state.mode
 
-    # Invisible anchor + one-time smooth scroll to the input section after a
-    # scanner card is selected, so the user lands on the input box without
-    # manually scrolling down.
-    st.markdown('<div id="satark-input-anchor"></div>', unsafe_allow_html=True)
-    if st.session_state.get("scroll_to_input"):
-        import streamlit.components.v1 as components
-        from datetime import datetime
+    # ==========================================================
+    # SELECTED MODE
+    # ==========================================================
+
+    mode = st.session_state.mode
+
+
+    # ==========================================================
+    # AUTO-SCROLL TO INPUT SECTION
+    # ==========================================================
+
+    # Invisible anchor immediately above Security Analysis
+    st.markdown(
+        '<div id="satark-input-anchor"></div>',
+        unsafe_allow_html=True
+    )
+
+    if st.session_state.get("scroll_to_input", False):
+
         components.html(
             f"""
             <script>
-            // unique token so this always re-runs: {mode}-{datetime.now().timestamp()}
             setTimeout(function() {{
-                const el = window.parent.document.getElementById('satark-input-anchor');
-                if (el) {{ el.scrollIntoView({{behavior: 'smooth', block: 'start'}}); }}
-            }}, 100);
+
+                const el =
+                    window.parent.document.getElementById(
+                        'satark-input-anchor'
+                    );
+
+                if (el) {{
+                    el.scrollIntoView({{
+                        behavior: 'smooth',
+                        block: 'start'
+                    }});
+                }}
+
+            }}, 300);
             </script>
             """,
             height=0,
         )
+
         st.session_state.scroll_to_input = False
 
-    st.markdown(f'<div class="section-title">Security Analysis</div><div class="section-copy">Selected: <strong>{mode}</strong></div>',unsafe_allow_html=True)
-    uploaded=None; image_data_urls=[]; video_file=None; transcribe_audio=True
-    if mode=="Text":
-        content=st.text_area("Enter content",height=230,placeholder="Paste any message, post, SMS, social-media content or suspicious text here...",key=f"text_input_{mode}")
-    elif mode=="URL":
-        content=st.text_input("Website URL",placeholder="https://example.com",key="url_input")
-    elif mode=="PDF":
-        uploaded=st.file_uploader("Upload PDF",type=["pdf"],help="Best results come from text-based PDFs.",key="pdf_input"); content=""
-    elif mode=="Video":
-        video_file=st.file_uploader(
+
+    # ==========================================================
+    # SECURITY ANALYSIS INPUT
+    # ==========================================================
+
+    st.markdown(
+        f'<div class="section-title">🔎 Security Analysis</div>'
+        f'<div class="section-copy">Selected: <strong>{mode}</strong></div>',
+        unsafe_allow_html=True
+    )
+
+    uploaded = None
+    image_data_urls = []
+    video_file = None
+    transcribe_audio = True
+
+
+    # ==========================================================
+    # TEXT
+    # ==========================================================
+
+    if mode == "Text":
+
+        content = st.text_area(
+            "Enter content",
+            height=230,
+            placeholder=(
+                "Paste any message, post, SMS, "
+                "social-media content or suspicious text here..."
+            ),
+            key=f"text_input_{mode}"
+        )
+
+
+    # ==========================================================
+    # URL
+    # ==========================================================
+
+    elif mode == "URL":
+
+        content = st.text_input(
+            "Website URL",
+            placeholder="https://example.com",
+            key="url_input"
+        )
+
+
+    # ==========================================================
+    # PDF
+    # ==========================================================
+
+    elif mode == "PDF":
+
+        uploaded = st.file_uploader(
+            "Upload PDF",
+            type=["pdf"],
+            help="Best results come from text-based PDFs.",
+            key="pdf_input"
+        )
+
+        content = ""
+
+
+    # ==========================================================
+    # VIDEO
+    # ==========================================================
+
+    elif mode == "Video":
+
+        video_file = st.file_uploader(
             "Upload video",
-            type=["mp4","mov","avi","webm","mkv","m4v"],
+            type=[
+                "mp4",
+                "mov",
+                "avi",
+                "webm",
+                "mkv",
+                "m4v"
+            ],
             accept_multiple_files=False,
-            help="SATARK extracts a handful of representative frames and, when possible, transcribes the audio. Max 200 MB.",
+            help=(
+                "SATARK extracts a handful of representative "
+                "frames and, when possible, transcribes the audio. "
+                "Max 200 MB."
+            ),
             key="video_input"
         )
-        transcribe_audio=st.checkbox("Also transcribe and analyze the audio track (recommended for voice-call/scam-call videos)",value=True,key="video_transcribe_toggle")
-        content="Analyze the sampled video frames (and transcript, if provided) together as one investigation."
+
+        transcribe_audio = st.checkbox(
+            "Also transcribe and analyze the audio track "
+            "(recommended for voice-call/scam-call videos)",
+            value=True,
+            key="video_transcribe_toggle"
+        )
+
+        content = (
+            "Analyze the sampled video frames "
+            "(and transcript, if provided) together "
+            "as one investigation."
+        )
+
         if video_file is not None:
             st.video(video_file)
-        uploaded=None
+
+        uploaded = None
+
+
+    # ==========================================================
+    # IMAGE / QR
+    # ==========================================================
+
     else:
-        uploaded=st.file_uploader(
+
+        uploaded = st.file_uploader(
             "Upload image",
-            type=["png","jpg","jpeg","webp"],
+            type=[
+                "png",
+                "jpg",
+                "jpeg",
+                "webp"
+            ],
             accept_multiple_files=True,
-            help="Upload one or more screenshots, QR images, email screenshots or suspicious images. SATARK will analyze the selected images together.",
+            help=(
+                "Upload one or more screenshots, QR images, "
+                "email screenshots or suspicious images. "
+                "SATARK will analyze the selected images together."
+            ),
             key=f"image_input_{mode}"
         )
-        content="Analyze all supplied images together. Inspect visible text, links, logos, QR-related content, suspicious instructions, impersonation and social-engineering signals, and cross-image evidence."
+
+        content = (
+            "Analyze all supplied images together. "
+            "Inspect visible text, links, logos, QR-related content, "
+            "suspicious instructions, impersonation and "
+            "social-engineering signals, and cross-image evidence."
+        )
+
         if uploaded and len(uploaded) > 5:
-            st.info("SATARK will analyze the first 5 selected images together to keep the request reliable.")
+
+            st.info(
+                "SATARK will analyze the first 5 selected images "
+                "together to keep the request reliable."
+            )
+
+
+    # ==========================================================
+    # INPUT FINGERPRINT
+    # ==========================================================
 
     if mode in {"Image", "QR"}:
+
         current_input_fingerprint = uploaded_fingerprint(uploaded)
+
     elif mode == "Video":
-        current_input_fingerprint = single_file_fingerprint(video_file)
+
+        current_input_fingerprint = single_file_fingerprint(
+            video_file
+        )
+
     else:
+
         current_input_fingerprint = ""
 
-    if mode in {"Image", "QR", "Video"} and current_input_fingerprint != st.session_state.get("last_input_fingerprint", ""):
-        st.session_state.last_input_fingerprint = current_input_fingerprint
+
+    if (
+        mode in {"Image", "QR", "Video"}
+        and current_input_fingerprint
+        != st.session_state.get(
+            "last_input_fingerprint",
+            ""
+        )
+    ):
+
+        st.session_state.last_input_fingerprint = (
+            current_input_fingerprint
+        )
+
         if current_input_fingerprint:
+
             st.session_state.result = None
 
-    st.markdown('<div class="analyze">',unsafe_allow_html=True)
-    analyze_clicked=st.button("Analyze with SATARK",use_container_width=True,type="primary",key="analyze_button")
-    st.markdown('</div>',unsafe_allow_html=True)
+
+    # ==========================================================
+    # ANALYZE BUTTON
+    # ==========================================================
+
+    st.markdown(
+        '<div class="analyze">',
+        unsafe_allow_html=True
+    )
+
+    analyze_clicked = st.button(
+        "🔍 Analyze with SATARK",
+        use_container_width=True,
+        type="primary",
+        key="analyze_button"
+    )
+
+    st.markdown(
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+
+    # ==========================================================
+    # RUN ANALYSIS
+    # ==========================================================
 
     if analyze_clicked:
-        if not safe_text(api_key): st.error("Enter your Groq API key in the sidebar first."); st.stop()
+
+        if not safe_text(api_key):
+
+            st.error(
+                "🔑 Enter your Groq API key in the sidebar first."
+            )
+
+            st.stop()
+
+
         try:
-            # Each analysis receives a fresh request id and fresh model discovery.
-            # This prevents a previous image/video scan from contaminating the next one.
-            st.session_state.analysis_request_id = hashlib.sha256(
-                f"{datetime.now().isoformat()}|{mode}".encode("utf-8")
-            ).hexdigest()[:16]
+
+            # Fresh request ID for every analysis
+            st.session_state.analysis_request_id = (
+                hashlib.sha256(
+                    f"{datetime.now().isoformat()}|{mode}"
+                    .encode("utf-8")
+                ).hexdigest()[:16]
+            )
+
             st.session_state.result = None
             st.session_state.vision_model = None
-            client=get_client(api_key)
-            st.markdown('<div class="analysis-loader" aria-label="SATARK is analyzing"><span></span></div>', unsafe_allow_html=True)
-            with st.spinner("SATARK is reading the content, evaluating threat patterns and building your report…"):
-                available=discover_models(client)
-                st.session_state.available_models=available
-                # Do not block analysis based on the model-list endpoint. Some
-                # Groq accounts can successfully call a model even when the
-                # listing response is incomplete, and vice versa. The actual
-                # completion request in analyze_with_groq is the source of truth.
-                if mode=="Text":
-                    if not safe_text(content): raise ValueError("Please enter some content to analyze.")
-                    prepared=content[:50000]
-                elif mode=="URL":
-                    if not safe_text(content): raise ValueError("Please enter a URL.")
-                    prepared=fetch_url_text(content)
-                    if not prepared.strip(): raise ValueError("The URL returned no readable content.")
-                elif mode=="PDF":
-                    if uploaded is None: raise ValueError("Please upload a PDF.")
-                    prepared=extract_pdf_text(uploaded)
-                elif mode=="Video":
-                    if video_file is None: raise ValueError("Please upload a video.")
-                    if not _video_dependencies_available():
-                        raise RuntimeError(
-                            "Video analysis needs OpenCV installed in this environment "
-                            "(pip install opencv-python-headless --break-system-packages), then restart the app."
+
+            client = get_client(api_key)
+
+            st.markdown(
+                '<div class="analysis-loader" '
+                'aria-label="SATARK is analyzing">'
+                '<span></span></div>',
+                unsafe_allow_html=True
+            )
+
+
+            with st.spinner(
+                "SATARK is reading the content, "
+                "evaluating threat patterns and "
+                "building your report…"
+            ):
+
+                available = discover_models(client)
+
+                st.session_state.available_models = available
+
+
+                # ==================================================
+                # PREPARE INPUT
+                # ==================================================
+
+                if mode == "Text":
+
+                    if not safe_text(content):
+
+                        raise ValueError(
+                            "Please enter some content to analyze."
                         )
-                    frames, duration, warnings = extract_video_frames(video_file)
-                    image_data_urls = pil_frames_to_data_urls(frames)
+
+                    prepared = content[:50000]
+
+
+                elif mode == "URL":
+
+                    if not safe_text(content):
+
+                        raise ValueError(
+                            "Please enter a URL."
+                        )
+
+                    prepared = fetch_url_text(content)
+
+                    if not prepared.strip():
+
+                        raise ValueError(
+                            "The URL returned no readable content."
+                        )
+
+
+                elif mode == "PDF":
+
+                    if uploaded is None:
+
+                        raise ValueError(
+                            "Please upload a PDF."
+                        )
+
+                    prepared = extract_pdf_text(uploaded)
+
+
+                elif mode == "Video":
+
+                    if video_file is None:
+
+                        raise ValueError(
+                            "Please upload a video."
+                        )
+
+
+                    if not _video_dependencies_available():
+
+                        raise RuntimeError(
+                            "Video analysis needs OpenCV installed "
+                            "in this environment "
+                            "(pip install opencv-python-headless "
+                            "--break-system-packages), then restart "
+                            "the app."
+                        )
+
+
+                    # ----------------------------------------------
+                    # Extract representative frames
+                    # ----------------------------------------------
+
+                    frames, duration, warnings = (
+                        extract_video_frames(video_file)
+                    )
+
+                    image_data_urls = (
+                        pil_frames_to_data_urls(frames)
+                    )
+
+
                     if not image_data_urls:
-                        raise ValueError("SATARK could not extract usable frames from this video.")
+
+                        raise ValueError(
+                            "SATARK could not extract usable "
+                            "frames from this video."
+                        )
+
+
                     if warnings:
-                        st.warning(" " + " ".join(warnings))
+
+                        st.warning(
+                            "⚠️ " + " ".join(warnings)
+                        )
+
+
+                    # ----------------------------------------------
+                    # Audio transcription
+                    # ----------------------------------------------
+
                     transcript = ""
+
                     if transcribe_audio:
-                        transcript = transcribe_video_audio(video_file, client)
-                    duration_note = f"Approx. duration: {duration:.1f} seconds. " if duration else ""
+
+                        transcript = transcribe_video_audio(
+                            video_file,
+                            client
+                        )
+
+
+                    duration_note = (
+                        f"Approx. duration: "
+                        f"{duration:.1f} seconds. "
+                        if duration
+                        else ""
+                    )
+
+
                     transcript_note = (
-                        f"Audio transcript:\n{transcript}" if transcript
-                        else "Audio transcript: not available (silent, unsupported audio, or transcription unavailable in this environment)."
+
+                        f"Audio transcript:\n{transcript}"
+
+                        if transcript
+
+                        else
+                        "Audio transcript: not available "
+                        "(silent, unsupported audio, or "
+                        "transcription unavailable in this "
+                        "environment)."
                     )
-                    prepared=(
-                        f"{content}\n{duration_note}Number of sampled frames: {len(image_data_urls)}.\n\n{transcript_note}"
+
+
+                    prepared = (
+                        f"{content}\n"
+                        f"{duration_note}"
+                        f"Number of sampled frames: "
+                        f"{len(image_data_urls)}.\n\n"
+                        f"{transcript_note}"
                     )
+
+
                 else:
-                    if not uploaded: raise ValueError("Please upload at least one image.")
-                    # Fresh conversion for every click prevents stale image/model state
-                    # from a previous scan from leaking into the new request.
-                    image_data_urls=images_to_data_urls(uploaded[:5], max_images=5)
-                    if not image_data_urls: raise ValueError("The selected image(s) could not be read.")
-                    prepared=f"{content}\nNumber of images in this investigation: {len(image_data_urls)}"
-                prompt=f"User profile: {role}\nScanner mode: {mode}\n\n{prepared}"
-                result=analyze_with_groq(client,prompt,mode,role,image_data_urls,available)
-            st.session_state.result=result
-            add_history(result,mode)
-            st.session_state.page="Analyze"
-            st.success("SATARK analysis complete.")
-        except (ValueError,RuntimeError) as exc: st.error(f" {exc}")
-        except (HTTPError,URLError) as exc: st.error(f" Could not fetch that URL safely: {exc}")
+
+                    if not uploaded:
+
+                        raise ValueError(
+                            "Please upload at least one image."
+                        )
+
+
+                    # ----------------------------------------------
+                    # Fresh image conversion
+                    # ----------------------------------------------
+
+                    image_data_urls = (
+                        images_to_data_urls(
+                            uploaded[:5],
+                            max_images=5
+                        )
+                    )
+
+
+                    if not image_data_urls:
+
+                        raise ValueError(
+                            "The selected image(s) "
+                            "could not be read."
+                        )
+
+
+                    prepared = (
+                        f"{content}\n"
+                        f"Number of images in this "
+                        f"investigation: "
+                        f"{len(image_data_urls)}"
+                    )
+
+
+                # ==================================================
+                # BUILD PROMPT
+                # ==================================================
+
+                prompt = (
+                    f"User profile: {role}\n"
+                    f"Scanner mode: {mode}\n\n"
+                    f"{prepared}"
+                )
+
+
+                # ==================================================
+                # GROQ ANALYSIS
+                # ==================================================
+
+                result = analyze_with_groq(
+                    client,
+                    prompt,
+                    mode,
+                    role,
+                    image_data_urls,
+                    available
+                )
+
+
+            # ======================================================
+            # SAVE RESULT
+            # ======================================================
+
+            st.session_state.result = result
+
+            add_history(
+                result,
+                mode
+            )
+
+            st.session_state.page = "Analyze"
+
+            st.success(
+                "SATARK analysis complete."
+            )
+
+
+        except (ValueError, RuntimeError) as exc:
+
+            st.error(
+                f"⚠️ {exc}"
+            )
+
+
+        except (HTTPError, URLError) as exc:
+
+            st.error(
+                f"⚠️ Could not fetch that URL safely: {exc}"
+            )
+
+
         except Exception as exc:
-            st.error(" SATARK could not complete the analysis. Check your API key, internet connection, input and model access.")
-            with st.expander("Technical details"): st.code(str(exc))
+
+            st.error(
+                "⚠️ SATARK could not complete the analysis. "
+                "Check your API key, internet connection, "
+                "input and model access."
+            )
+
+            with st.expander(
+                "Technical details"
+            ):
+
+                st.code(
+                    str(exc)
+                )
+
+
+    # ==========================================================
+    # RESULT
+    # ==========================================================
 
     if st.session_state.result:
-        render_result(st.session_state.result)
-        st.download_button("Download PDF report",make_pdf_report(st.session_state.result,mode),file_name="SATARK_security_report.pdf",mime="application/pdf",use_container_width=True)
+
+        render_result(
+            st.session_state.result
+        )
+
+        st.download_button(
+            "📄 Download PDF report",
+            make_pdf_report(
+                st.session_state.result,
+                mode
+            ),
+            file_name="SATARK_security_report.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+
+
+# ==============================================================
+# HISTORY
+# ==============================================================
 
 elif st.session_state.page == "History":
-    st.markdown('<div class="section-title">Scan History</div><div class="section-copy">Session-only history. Original submitted content is not stored here; only analysis results and metadata are retained.</div>',unsafe_allow_html=True)
+
+    st.markdown(
+        '<div class="section-title">🕘 Scan History</div>'
+        '<div class="section-copy">'
+        'Session-only history. Original submitted content is not '
+        'stored here; only analysis results and metadata are retained.'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
     if st.session_state.history:
-        if st.button("Clear session history",key="clear_history"): st.session_state.history=[]; st.session_state.result=None; st.rerun()
-        for i,entry in enumerate(st.session_state.history):
-            score=entry["score"]; label,css=risk_label(score, entry.get("category", ""))
-            with st.expander(f"{entry['mode']} • {entry['category']} • {score}/100 • {entry['time']}"):
-                st.markdown(f'<span class="badge">{label}</span> <span class="badge">{html.escape(entry["category"])}</span>',unsafe_allow_html=True)
-                st.write(entry["verdict"])
-                c1,c2=st.columns(2)
+
+        if st.button(
+            "Clear session history",
+            key="clear_history"
+        ):
+
+            st.session_state.history = []
+            st.session_state.result = None
+            st.rerun()
+
+
+        for i, entry in enumerate(
+            st.session_state.history
+        ):
+
+            score = entry["score"]
+
+            label, css = risk_label(
+                score,
+                entry.get("category", "")
+            )
+
+
+            with st.expander(
+                f"{entry['mode']} • "
+                f"{entry['category']} • "
+                f"{score}/100 • "
+                f"{entry['time']}"
+            ):
+
+                st.markdown(
+                    f'<span class="badge">{label}</span> '
+                    f'<span class="badge">'
+                    f'{html.escape(entry["category"])}'
+                    f'</span>',
+                    unsafe_allow_html=True
+                )
+
+                st.write(
+                    entry["verdict"]
+                )
+
+
+                c1, c2 = st.columns(2)
+
+
                 with c1:
-                    if st.button("Open result",key=f"history_open_{i}"): st.session_state.result=entry["result"]; st.session_state.mode=entry["mode"]; st.session_state.page="Analyze"; st.rerun()
+
+                    if st.button(
+                        "Open result",
+                        key=f"history_open_{i}"
+                    ):
+
+                        st.session_state.result = (
+                            entry["result"]
+                        )
+
+                        st.session_state.mode = (
+                            entry["mode"]
+                        )
+
+                        st.session_state.page = (
+                            "Analyze"
+                        )
+
+                        st.rerun()
+
+
                 with c2:
-                    st.download_button("Export PDF",make_pdf_report(entry["result"],entry["mode"]),file_name=f"SATARK_report_{i+1}.pdf",mime="application/pdf",key=f"history_dl_{i}")
-    else: st.info("No scans yet. Analyze something suspicious and it will appear here for this session.")
+
+                    st.download_button(
+                        "📄 Export PDF",
+                        make_pdf_report(
+                            entry["result"],
+                            entry["mode"]
+                        ),
+                        file_name=(
+                            f"SATARK_report_{i+1}.pdf"
+                        ),
+                        mime="application/pdf",
+                        key=f"history_dl_{i}"
+                    )
+
+    else:
+
+        st.info(
+            "No scans yet. Analyze something suspicious "
+            "and it will appear here for this session."
+        )
+
+
+# ==============================================================
+# SCAM CHALLENGE
+# ==============================================================
 
 elif st.session_state.page == "Challenge":
-    st.markdown('<div class="section-title">Scam Challenge</div><div class="section-copy">Can you spot the scam before SATARK does? Great for students and classroom practice.</div>',unsafe_allow_html=True)
-    questions=[
-        {"q":"“URGENT: Your bank account will be blocked today. Verify immediately at this link.” What is the strongest warning sign?","options":["Urgency + account threat","A normal greeting","A long message","A company logo"],"answer":0,"why":"Attackers often create panic so you act before verifying. Urgency plus an account threat is a classic social-engineering pattern."},
-        {"q":"A message says you won ₹50,000 and asks for a small ‘processing fee’. What should you suspect first?","options":["Reward/payment scam","Normal banking","Software update","School notice"],"answer":0,"why":"Unexpected prizes combined with a payment request are a common fraud pattern."},
-        {"q":"A login link says it is from a familiar service, but the domain is misspelled. What is the key clue?","options":["Brand impersonation","Good website design","HTTPS alone","A short message"],"answer":0,"why":"Look at the actual domain, not just the logo or page appearance. Impersonation domains are frequently used for credential theft."},
-        {"q":"Someone asks for your OTP because they claim to be ‘support’. What is the safest response?","options":["Share it quickly","Never share the OTP; verify independently","Send a screenshot","Ask for their password"],"answer":1,"why":"Legitimate services should not require you to disclose one-time passwords to an unsolicited caller or message sender."},
+
+    st.markdown(
+        '<div class="section-title">🎯 Scam Challenge</div>'
+        '<div class="section-copy">'
+        'Can you spot the scam before SATARK does? '
+        'Great for students and classroom practice.'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+
+    questions = [
+
+        {
+            "q":
+                "“URGENT: Your bank account will be blocked today. "
+                "Verify immediately at this link.” "
+                "What is the strongest warning sign?",
+
+            "options": [
+                "Urgency + account threat",
+                "A normal greeting",
+                "A long message",
+                "A company logo"
+            ],
+
+            "answer": 0,
+
+            "why":
+                "Attackers often create panic so you act before "
+                "verifying. Urgency plus an account threat is a "
+                "classic social-engineering pattern."
+        },
+
+
+        {
+            "q":
+                "A message says you won ₹50,000 and asks for a "
+                "small ‘processing fee’. What should you suspect first?",
+
+            "options": [
+                "Reward/payment scam",
+                "Normal banking",
+                "Software update",
+                "School notice"
+            ],
+
+            "answer": 0,
+
+            "why":
+                "Unexpected prizes combined with a payment request "
+                "are a common fraud pattern."
+        },
+
+
+        {
+            "q":
+                "A login link says it is from a familiar service, "
+                "but the domain is misspelled. What is the key clue?",
+
+            "options": [
+                "Brand impersonation",
+                "Good website design",
+                "HTTPS alone",
+                "A short message"
+            ],
+
+            "answer": 0,
+
+            "why":
+                "Look at the actual domain, not just the logo or "
+                "page appearance. Impersonation domains are frequently "
+                "used for credential theft."
+        },
+
+
+        {
+            "q":
+                "Someone asks for your OTP because they claim to "
+                "be ‘support’. What is the safest response?",
+
+            "options": [
+                "Share it quickly",
+                "Never share the OTP; verify independently",
+                "Send a screenshot",
+                "Ask for their password"
+            ],
+
+            "answer": 1,
+
+            "why":
+                "Legitimate services should not require you to disclose "
+                "one-time passwords to an unsolicited caller or message "
+                "sender."
+        }
+
     ]
-    q=questions[st.session_state.challenge_index%len(questions)]
-    st.markdown('<div class="challenge-card">',unsafe_allow_html=True)
-    st.markdown(f'<div class="badge">Question {(st.session_state.challenge_index%len(questions))+1} / {len(questions)}</div><div class="challenge-q" style="margin-top:14px">{q["q"]}</div>',unsafe_allow_html=True)
-    cols=st.columns(2)
-    for idx,opt in enumerate(q["options"]):
-        with cols[idx%2]:
-            if st.button(opt,key=f"challenge_opt_{st.session_state.challenge_index}_{idx}",use_container_width=True):
+
+
+    q = questions[
+        st.session_state.challenge_index
+        % len(questions)
+    ]
+
+
+    st.markdown(
+        '<div class="challenge-card">',
+        unsafe_allow_html=True
+    )
+
+
+    st.markdown(
+        f'''
+        <div class="badge">
+            Question
+            {(st.session_state.challenge_index % len(questions)) + 1}
+            / {len(questions)}
+        </div>
+
+        <div class="challenge-q"
+             style="margin-top:14px">
+            {q["q"]}
+        </div>
+        ''',
+        unsafe_allow_html=True
+    )
+
+
+    cols = st.columns(2)
+
+
+    for idx, opt in enumerate(
+        q["options"]
+    ):
+
+        with cols[idx % 2]:
+
+            if st.button(
+                opt,
+                key=(
+                    f"challenge_opt_"
+                    f"{st.session_state.challenge_index}_"
+                    f"{idx}"
+                ),
+                use_container_width=True
+            ):
+
                 if not st.session_state.challenge_answered:
-                    if idx==q["answer"]: st.session_state.challenge_score+=1; st.success("Correct!")
-                    else: st.warning("Not quite. Here's the pattern to remember.")
-                    st.session_state.challenge_answered=True; st.rerun()
+
+                    if idx == q["answer"]:
+
+                        st.session_state.challenge_score += 1
+
+                        st.success(
+                            "Correct! 🎉"
+                        )
+
+                    else:
+
+                        st.warning(
+                            "Not quite. Here's the pattern to remember."
+                        )
+
+                    st.session_state.challenge_answered = True
+
+                    st.rerun()
+
+
     if st.session_state.challenge_answered:
-        st.markdown(f'<div class="challenge-answer"><strong>Why:</strong> {q["why"]}</div>',unsafe_allow_html=True)
-        st.write(f"Score: **{st.session_state.challenge_score}/{(st.session_state.challenge_index%len(questions))+1}**")
-        if st.button("Next challenge",key="next_challenge",type="primary"): st.session_state.challenge_index+=1; st.session_state.challenge_answered=False; st.rerun()
-    st.markdown('</div>',unsafe_allow_html=True)
-    if st.button("Reset challenge score",key="reset_challenge"): st.session_state.challenge_index=0; st.session_state.challenge_score=0; st.session_state.challenge_answered=False; st.rerun()
+
+        st.markdown(
+            f'''
+            <div class="challenge-answer">
+                <strong>Why:</strong> {q["why"]}
+            </div>
+            ''',
+            unsafe_allow_html=True
+        )
+
+
+        st.write(
+            f"Score: **"
+            f"{st.session_state.challenge_score}/"
+            f"{(st.session_state.challenge_index % len(questions)) + 1}"
+            f"**"
+        )
+
+
+        if st.button(
+            "Next challenge",
+            key="next_challenge",
+            type="primary"
+        ):
+
+            st.session_state.challenge_index += 1
+            st.session_state.challenge_answered = False
+            st.rerun()
+
+
+    st.markdown(
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+
+    if st.button(
+        "Reset challenge score",
+        key="reset_challenge"
+    ):
+
+        st.session_state.challenge_index = 0
+        st.session_state.challenge_score = 0
+        st.session_state.challenge_answered = False
+        st.rerun()
+
+
+# ==============================================================
+# SATARK ACADEMY
+# ==============================================================
 
 elif st.session_state.page == "Academy":
-    st.markdown('<div class="section-title">SATARK Academy</div><div class="section-copy">Learn the patterns behind the scams instead of relying on AI forever.</div>',unsafe_allow_html=True)
-    lessons=[
-        ("","Phishing","Fake messages and pages designed to steal credentials or information."),
-        ("","Urgency manipulation","Pressure tactics that make you act before you verify."),
-        ("","Impersonation","Attackers pretending to be banks, schools, companies, friends or officials."),
-        ("","Suspicious links","Look-alike domains, strange paths, redirects and unexpected login pages."),
-        ("","Payment fraud","Fake fees, refunds, prizes, QR payments and requests for money."),
-        ("","Account takeover","Attempts to obtain passwords, OTPs, recovery codes or session access."),
+
+    st.markdown(
+        '<div class="section-title">🎓 SATARK Academy</div>'
+        '<div class="section-copy">'
+        'Learn the patterns behind the scams instead of relying '
+        'on AI forever.'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+
+    lessons = [
+
+        (
+            "🎣",
+            "Phishing",
+            "Fake messages and pages designed to steal "
+            "credentials or information."
+        ),
+
+        (
+            "⏰",
+            "Urgency manipulation",
+            "Pressure tactics that make you act before you verify."
+        ),
+
+        (
+            "👤",
+            "Impersonation",
+            "Attackers pretending to be banks, schools, "
+            "companies, friends or officials."
+        ),
+
+        (
+            "🔗",
+            "Suspicious links",
+            "Look-alike domains, strange paths, redirects "
+            "and unexpected login pages."
+        ),
+
+        (
+            "💳",
+            "Payment fraud",
+            "Fake fees, refunds, prizes, QR payments "
+            "and requests for money."
+        ),
+
+        (
+            "🔐",
+            "Account takeover",
+            "Attempts to obtain passwords, OTPs, recovery "
+            "codes or session access."
+        )
+
     ]
-    cols=st.columns(3)
-    for i,(icon,title,copy) in enumerate(lessons):
-        with cols[i%3]: st.markdown(f'<div class="feature-card"><div class="feature-icon">{icon}</div><div class="feature-title">{title}</div><div class="feature-copy">{copy}</div></div>',unsafe_allow_html=True)
-    st.markdown("### A simple rule to remember")
-    st.info("STOP → VERIFY → ACT. If a message creates pressure, asks for secrets, or requests money, pause and verify through an independent official channel.")
+
+
+    cols = st.columns(3)
+
+
+    for i, (icon, title, copy) in enumerate(
+        lessons
+    ):
+
+        with cols[i % 3]:
+
+            st.markdown(
+                f'''
+                <div class="feature-card">
+                    <div class="feature-icon">{icon}</div>
+                    <div class="feature-title">{title}</div>
+                    <div class="feature-copy">{copy}</div>
+                </div>
+                ''',
+                unsafe_allow_html=True
+            )
+
+
+    st.markdown(
+        "### A simple rule to remember"
+    )
+
+
+    st.info(
+        "STOP → VERIFY → ACT. If a message creates pressure, "
+        "asks for secrets, or requests money, pause and verify "
+        "through an independent official channel."
+    )
+
+
+# ==============================================================
+# CLASSROOM
+# ==============================================================
 
 elif st.session_state.page == "Classroom":
-    st.markdown('<div class="section-title">Classroom Mode</div><div class="section-copy">A simple teacher-facing view for using SATARK as a cyber-safety learning tool.</div>',unsafe_allow_html=True)
-    history=st.session_state.history
-    total=len(history); avg=round(sum(x["score"] for x in history)/total) if total else 0; high=sum(1 for x in history if x["score"]>=70)
-    a,b,c=st.columns(3)
-    with a: st.markdown(f'<div class="metric"><div class="metric-label">Scans this session</div><div class="metric-value">{total}</div></div>',unsafe_allow_html=True)
-    with b: st.markdown(f'<div class="metric"><div class="metric-label">Average risk</div><div class="metric-value">{avg}/100</div></div>',unsafe_allow_html=True)
-    with c: st.markdown(f'<div class="metric"><div class="metric-label">High-risk findings</div><div class="metric-value critical">{high}</div></div>',unsafe_allow_html=True)
-    st.markdown("### Suggested classroom flow")
-    st.markdown("**1.** Give students a suspicious message.  **2.** Ask them to identify warning signs.  **3.** Run it through SATARK.  **4.** Compare the evidence.  **5.** Use Scam Challenge to reinforce the lesson.")
-    st.markdown("### Common patterns in this session")
-    counts={}
-    for item in history:
-        key=item["category"]; counts[key]=counts.get(key,0)+1
-    if counts:
-        for k,v in sorted(counts.items(),key=lambda x:x[1],reverse=True): st.write(f"• **{k}** — {v} scan(s)")
-    else: st.info("Run a few example scans to populate classroom statistics.")
 
-# ---------------------------- Footer ---------------------------
-st.markdown('<div class="footer">SATARK • Smart AI Threat Analysis & Risk Knowledge<br>AI analysis is advisory. Always verify high-impact security decisions independently.<br>Session history is temporary and does not intentionally preserve submitted source content.</div>',unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-title">👨‍🏫 Classroom Mode</div>'
+        '<div class="section-copy">'
+        'A simple teacher-facing view for using SATARK '
+        'as a cyber-safety learning tool.'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+
+    history = st.session_state.history
+
+    total = len(history)
+
+    avg = (
+        round(
+            sum(x["score"] for x in history) / total
+        )
+        if total
+        else 0
+    )
+
+    high = sum(
+        1
+        for x in history
+        if x["score"] >= 70
+    )
+
+
+    a, b, c = st.columns(3)
+
+
+    with a:
+
+        st.markdown(
+            f'''
+            <div class="metric">
+                <div class="metric-label">
+                    Scans this session
+                </div>
+                <div class="metric-value">
+                    {total}
+                </div>
+            </div>
+            ''',
+            unsafe_allow_html=True
+        )
+
+
+    with b:
+
+        st.markdown(
+            f'''
+            <div class="metric">
+                <div class="metric-label">
+                    Average risk
+                </div>
+                <div class="metric-value">
+                    {avg}/100
+                </div>
+            </div>
+            ''',
+            unsafe_allow_html=True
+        )
+
+
+    with c:
+
+        st.markdown(
+            f'''
+            <div class="metric">
+                <div class="metric-label">
+                    High-risk findings
+                </div>
+                <div class="metric-value critical">
+                    {high}
+                </div>
+            </div>
+            ''',
+            unsafe_allow_html=True
+        )
+
+
+    st.markdown(
+        "### Suggested classroom flow"
+    )
+
+
+    st.markdown(
+        "**1.** Give students a suspicious message.  "
+        "**2.** Ask them to identify warning signs.  "
+        "**3.** Run it through SATARK.  "
+        "**4.** Compare the evidence.  "
+        "**5.** Use Scam Challenge to reinforce the lesson."
+    )
+
+
+    st.markdown(
+        "### Common patterns in this session"
+    )
+
+
+    counts = {}
+
+
+    for item in history:
+
+        key = item["category"]
+
+        counts[key] = counts.get(key, 0) + 1
+
+
+    if counts:
+
+        for k, v in sorted(
+            counts.items(),
+            key=lambda x: x[1],
+            reverse=True
+        ):
+
+            st.write(
+                f"• **{k}** — {v} scan(s)"
+            )
+
+    else:
+
+        st.info(
+            "Run a few example scans to populate "
+            "classroom statistics."
+        )
+
+
+# ==============================================================
+# FOOTER
+# ==============================================================
+
+st.markdown(
+    '<div class="footer">'
+    'SATARK • Smart AI Threat Analysis & Risk Knowledge<br>'
+    'AI analysis is advisory. Always verify high-impact security '
+    'decisions independently.<br>'
+    'Session history is temporary and does not intentionally '
+    'preserve submitted source content.'
+    '</div>',
+    unsafe_allow_html=True
+)
