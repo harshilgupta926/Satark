@@ -3902,8 +3902,6 @@ elif st.session_state.page == "Analyze":
     # "Let SATARK Check It" from the Home page.
     if st.session_state.get("scroll_to_scanners", False):
 
-        import streamlit.components.v1 as components
-
         components.html(
             """
             <script>
@@ -3985,6 +3983,9 @@ elif st.session_state.page == "Analyze":
                     st.session_state.result = None
                     st.session_state.last_input_fingerprint = ""
                     st.session_state.analysis_request_id = ""
+
+                    # After rerun, automatically scroll to the selected
+                    # scanner's Security Analysis input section.
                     st.session_state.scroll_to_input = True
 
                     st.rerun()
@@ -4001,9 +4002,11 @@ elif st.session_state.page == "Analyze":
     # AUTO-SCROLL TO INPUT SECTION
     # ==========================================================
 
-    # Invisible anchor immediately above Security Analysis
+    # Invisible anchor immediately above Security Analysis.
+    # This is the exact position the page scrolls to after a scanner
+    # card is selected.
     st.markdown(
-        '<div id="satark-input-anchor"></div>',
+        '<div id="satark-input-anchor" style="scroll-margin-top: 24px;"></div>',
         unsafe_allow_html=True
     )
 
@@ -4026,7 +4029,7 @@ elif st.session_state.page == "Analyze":
                     }});
                 }}
 
-            }}, 300);
+            }}, 500);
             </script>
             """,
             height=0,
