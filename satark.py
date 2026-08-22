@@ -1750,28 +1750,25 @@ html,body,[class*="css"]{
     font-family:"Manrope",sans-serif;
 }
 
-/* SCANNER CARD — WHOLE-CARD CLICKABLE OVERLAY
-   NOTE: .scanner-wrap div stays EMPTY in the real DOM because
-   st.markdown() and st.button() each render as separate sibling
-   blocks — Streamlit never actually nests the button inside the
-   div you "open" and "close" around it. So instead of relying on
-   nesting, we pull the button UP over the card that sits right
-   before it in the column using a negative top margin. */
+/* SCANNER CARD — WHOLE-CARD CLICKABLE OVERLAY */
 
 div[data-testid="column"] .scanner{
     margin-bottom: 0 !important;
 }
 
 div[data-testid="column"] div[data-testid="stButton"]{
-    margin-top: -96px !important;   /* matches .scanner min-height below */
-    height: 96px !important;
-    position: relative !important;
-    z-index: 10 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
 }
 
 div[data-testid="column"] div[data-testid="stButton"] > button{
+    position: relative !important;
+    top: -104px !important;
     width: 100% !important;
-    height: 100% !important;
+    height: 104px !important;
     min-height: 0 !important;
     opacity: 0 !important;
     cursor: pointer !important;
@@ -1779,6 +1776,7 @@ div[data-testid="column"] div[data-testid="stButton"] > button{
     background: transparent !important;
     padding: 0 !important;
     margin: 0 !important;
+    z-index: 10 !important;
 }
 
 body{
@@ -2651,8 +2649,8 @@ textarea:focus,
         font-size:.68rem;
     }
 
-    div[data-testid="column"] div[data-testid="stButton"]{
-        margin-top: -88px !important;   /* matches mobile .scanner min-height */
+    div[data-testid="column"] div[data-testid="stButton"] > button{
+        top: -88px !important;
         height: 88px !important;
     }
 
