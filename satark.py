@@ -1325,7 +1325,7 @@ def add_history(result, mode):
 # ----------------------- Session state -------------------------
 def init_state():
     defaults={
-        "mode":"Text","result":None,"history":[],
+        "mode":"None","result":None,"history":[],
         "challenge_index":0,"challenge_score":0,"challenge_answered":False,
         "available_models":set(),"text_model":None,"vision_model":None,
         "last_input_fingerprint":"","analysis_request_id":"",
@@ -4063,73 +4063,60 @@ elif st.session_state.page == "Analyze":
         unsafe_allow_html=True
     )
  
-    scanner_rows = [
-        [
-            ("Text", "💬", "Messages, posts and suspicious text"),
-            ("URL", "🔗", "Websites and suspicious links"),
-            ("Image", "🖼️", "Suspicious Screenshots and images")
-        ],
-        [
-            ("PDF", "📄", "Fraudlent Text-based documents"),
-            ("QR", "▣", "QR screenshots and QR-related images"),
-            ("Video", "🎬", "Suspicious clips, reels and voice-call recordings")
-        ]
+    scanner_row = [
+        ("Text", "💬", "Messages, posts and suspicious text"),
+        ("URL", "🔗", "Websites and suspicious links"),
+        ("Image", "🖼️", "Suspicious Screenshots and images"),
+        ("PDF", "📄", "Fraudlent Text-based documents"),
+        ("QR", "▣", "QR screenshots and QR-related images"),
+        ("Video", "🎬", "Suspicious clips, reels and voice-call recordings")
     ]
  
-    for row in scanner_rows:
+    cols = st.columns(6)
  
-        cols = st.columns(3)
+    for col, (name, icon, copy) in zip(cols, scanner_row):
  
-        for col, (name, icon, copy) in zip(cols, row):
+        with col:
  
-            with col:
+            active = st.session_state.mode == name
  
-                active = st.session_state.mode == name
+            st.markdown(
+                f'''
+                <div class="scanner {"active" if active else ""}">
+                    <div class="scanner-icon">{icon}</div>
+                    <div class="scanner-title">{name}</div>
+                    <div class="scanner-copy">{copy}</div>
+                </div>
+                ''',
+                unsafe_allow_html=True
+            )
  
-                # Whole card is now clickable: card markup + an
-                # invisible, fully-stretched button layered on top
-                # via the .scanner-wrap CSS defined above.
-                st.markdown('<div class="scanner-wrap">', unsafe_allow_html=True)
+            clicked = st.button(
+                "",
+                key=f"scanner_{name}",
+                use_container_width=True
+            )
  
-                st.markdown(
-                    f'''
-                    <div class="scanner {"active" if active else ""}">
-                        <div class="scanner-icon">{icon}</div>
-                        <div class="scanner-title">{name}</div>
-                        <div class="scanner-copy">{copy}</div>
-                    </div>
-                    ''',
-                    unsafe_allow_html=True
+            if clicked:
+                st.session_state.mode = name
+                st.session_state.result = None
+                st.session_state.last_input_fingerprint = ""
+                st.session_state.analysis_request_id = ""
+ 
+                # Unique trigger for EVERY scanner click.
+                # This makes the auto-scroll repeat indefinitely.
+                st.session_state.scroll_to_input_trigger = (
+                    st.session_state.get("scroll_to_input_trigger", 0) + 1
                 )
  
-                clicked = st.button(
-                    "",
-                    key=f"scanner_{name}",
-                    use_container_width=True
-                )
- 
-                st.markdown('</div>', unsafe_allow_html=True)
- 
-                if clicked:
-                    st.session_state.mode = name
-                    st.session_state.result = None
-                    st.session_state.last_input_fingerprint = ""
-                    st.session_state.analysis_request_id = ""
- 
-                    # Unique trigger for EVERY scanner click.
-                    # This makes the auto-scroll repeat indefinitely.
-                    st.session_state.scroll_to_input_trigger = (
-                        st.session_state.get("scroll_to_input_trigger", 0) + 1
-                    )
- 
-                    st.rerun()
+                st.rerun()
  
  
     # ==========================================================
     # SELECTED MODE
     # ==========================================================
  
-    mode = st.session_state.mode
+    mode = st.session_state.mode or "Text"
  
  
     # ==========================================================
