@@ -1750,24 +1750,26 @@ html,body,[class*="css"]{
     font-family:"Manrope",sans-serif;
 }
 
-/* SCANNER CARD — WHOLE-CARD CLICKABLE OVERLAY */
+/* SCANNER CARD — WHOLE-CARD CLICKABLE OVERLAY
+   NOTE: .scanner-wrap div stays EMPTY in the real DOM because
+   st.markdown() and st.button() each render as separate sibling
+   blocks — Streamlit never actually nests the button inside the
+   div you "open" and "close" around it. So instead of relying on
+   nesting, we pull the button UP over the card that sits right
+   before it in the column using a negative top margin. */
 
-.scanner-wrap {
-    position: relative !important;
+div[data-testid="column"] .scanner{
+    margin-bottom: 0 !important;
 }
 
-.scanner-wrap div[data-testid="stButton"] {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
+div[data-testid="column"] div[data-testid="stButton"]{
+    margin-top: -96px !important;   /* matches .scanner min-height below */
+    height: 96px !important;
+    position: relative !important;
     z-index: 10 !important;
 }
 
-.scanner-wrap div[data-testid="stButton"] > button {
+div[data-testid="column"] div[data-testid="stButton"] > button{
     width: 100% !important;
     height: 100% !important;
     min-height: 0 !important;
@@ -1775,6 +1777,8 @@ html,body,[class*="css"]{
     cursor: pointer !important;
     border: 0 !important;
     background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
 body{
@@ -2091,25 +2095,6 @@ div[data-testid="stButton"]>button[kind="primary"]{
     box-shadow:
         0 0 0 1px rgba(155,140,255,.12),
         0 12px 30px rgba(0,0,0,.22);
-}
-
-/* SCANNER CARD — WHOLE-CARD CLICKABLE OVERLAY
-   Wraps a .scanner card + an invisible, fully-stretched
-   st.button so clicking anywhere on the card triggers it,
-   instead of needing a separate visible button underneath. */
-
-.scanner-wrap { position: relative; }
-
-.scanner-wrap div[data-testid="stButton"] {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-}
-
-.scanner-wrap div[data-testid="stButton"] > button {
-    width: 100%; height: 100%;
-    opacity: 0;
-    cursor: pointer;
 }
 
 /* INPUTS */
@@ -2664,6 +2649,11 @@ textarea:focus,
 
     .scanner-copy{
         font-size:.68rem;
+    }
+
+    div[data-testid="column"] div[data-testid="stButton"]{
+        margin-top: -88px !important;   /* matches mobile .scanner min-height */
+        height: 88px !important;
     }
 
     div[data-testid="stButton"]>button{
