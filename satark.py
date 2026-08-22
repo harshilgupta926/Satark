@@ -1723,6 +1723,8 @@ st.set_page_config(
 
 # ----------------------------- CSS ----------------------------
 
+# ----------------------------- CSS ----------------------------
+
 st.markdown(
     """
 <style>
@@ -1748,35 +1750,6 @@ st.markdown(
 
 html,body,[class*="css"]{
     font-family:"Manrope",sans-serif;
-}
-
-/* SCANNER CARD — WHOLE-CARD CLICKABLE OVERLAY */
-
-div[data-testid="column"] .scanner{
-    margin-bottom: 0 !important;
-}
-
-div[data-testid="column"] div[data-testid="stButton"]{
-    height: 0 !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: visible !important;
-}
-
-div[data-testid="column"] div[data-testid="stButton"] > button{
-    position: relative !important;
-    top: -104px !important;
-    width: 100% !important;
-    height: 104px !important;
-    min-height: 0 !important;
-    opacity: 0 !important;
-    cursor: pointer !important;
-    border: 0 !important;
-    background: transparent !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    z-index: 10 !important;
 }
 
 body{
@@ -2093,6 +2066,30 @@ div[data-testid="stButton"]>button[kind="primary"]{
     box-shadow:
         0 0 0 1px rgba(155,140,255,.12),
         0 12px 30px rgba(0,0,0,.22);
+}
+
+/* SCANNER CARD BUTTON — make the real button itself invisible
+   and pulled up flush over the card, instead of showing as a
+   separate dark box underneath. Targets Streamlit's key-based
+   class, which is more reliable than testid ordering. */
+
+[class*="st-key-scanner_"]{
+    margin-top:-96px !important;
+    height:96px !important;
+    position:relative !important;
+    z-index:10 !important;
+}
+
+[class*="st-key-scanner_"] button{
+    width:100% !important;
+    height:100% !important;
+    min-height:0 !important;
+    opacity:0 !important;
+    cursor:pointer !important;
+    border:0 !important;
+    background:transparent !important;
+    padding:0 !important;
+    margin:0 !important;
 }
 
 /* INPUTS */
@@ -2649,9 +2646,9 @@ textarea:focus,
         font-size:.68rem;
     }
 
-    div[data-testid="column"] div[data-testid="stButton"] > button{
-        top: -88px !important;
-        height: 88px !important;
+    [class*="st-key-scanner_"]{
+        margin-top:-88px !important;
+        height:88px !important;
     }
 
     div[data-testid="stButton"]>button{
