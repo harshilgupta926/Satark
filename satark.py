@@ -2073,10 +2073,18 @@ div[data-testid="stButton"]>button[kind="primary"]{
    separate dark box underneath. Targets Streamlit's key-based
    class, which is more reliable than testid ordering. */
 
-[class*="st-key-scanner_"]{
-    margin-top:-96px !important;
-    height:96px !important;
+
+   .scanner{
     position:relative !important;
+}
+
+[class*="st-key-scanner_"]{
+    position:absolute !important;
+    top:0 !important;
+    left:0 !important;
+    width:100% !important;
+    height:100% !important;
+    margin:0 !important;
     z-index:10 !important;
 }
 
