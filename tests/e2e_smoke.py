@@ -51,20 +51,24 @@ def assert_no_overlap(page, selector, name):
 
 
 def choose_workspace(page, steps_down):
-    """Select a FIRSTLIGHT workspace with keyboard input.
-
-    Streamlit's React-ARIA option popover can detach during a rerun before a
-    Playwright pointer click completes. Keyboard navigation avoids that flaky
-    DOM race while keeping the test on the real user interaction path.
-    """
+    """Use the real selectbox keyboard path and verify the selected workspace."""
+    options = [
+        ("Incident", "Incident workspace"),
+        ("Evidence Integrity", "Evidence integrity"),
+        ("Investigation", "Coordinated investigation"),
+        ("Response Center", "Response center"),
+        ("Audit Trail", "Hash-chained audit trail"),
+    ]
     workspace = page.get_by_role("combobox", name="Investigation workspace")
     workspace.click()
-    # Reset to the first option before moving so this remains deterministic
-    # even if Streamlit preserves a previous selectbox value across reruns.
+    # Streamlit's React-ARIA popover can rerender/detach options during a
+    # pointer click. Keyboard selection is a supported user interaction and
+    # avoids clicking a transient option node.
     workspace.press("Home")
     for _ in range(steps_down):
         workspace.press("ArrowDown")
     workspace.press("Enter")
+    page.get_by_text(options[steps_down][1], exact=False).wait_for(timeout=30_000)
 
 
 
@@ -126,8 +130,8 @@ def main():
                 page.locator(".st-key-home-actions").get_by_role(
                     "button", name="Open FIRSTLIGHT →"
                 ).last.click()
-                page.get_by_role("button", name="Load / reset synthetic incident").click()
-                page.get_by_text("Synthetic case loaded").wait_for(timeout=30_000)
+                page.get_by_role("button", name="Open / reset training case").click()
+                page.get_by_text("Training case loaded").wait_for(timeout=30_000)
                 choose_workspace(page, 2)
                 page.get_by_text("Coordinated investigation", exact=True).wait_for(timeout=30_000)
                 page.get_by_role("button", name="Run investigation workflow").click()
@@ -140,7 +144,7 @@ def main():
                 firstlight_json = Path(firstlight_download.value.path()).read_text(encoding="utf-8")
                 assert '"case_id": "FL-DEMO-2026-001"' in firstlight_json
                 assert '"audit_chain_valid": true' in firstlight_json
-                assert "Synthetic demonstration only" in firstlight_json
+                assert "Training case only" in firstlight_json
 
                 # Approval remains explicitly simulated; verify the action log
                 # and audit trail after one approval.
@@ -157,7 +161,7 @@ def main():
 
                 # The offline sample must open without a provider key and expose
                 # the evidence ledger plus the deterministic coverage check.
-                page.get_by_role("button",name="Open guided sample report").click()
+                page.get_by_role("button", name="View example report").click()
                 page.get_by_text("Investigation workflow").wait_for(timeout=30_000)
                 page.get_by_text("Evidence ledger").wait_for(timeout=30_000)
                 page.get_by_text("INDEPENDENT COVERAGE CHECK").wait_for(timeout=30_000)
