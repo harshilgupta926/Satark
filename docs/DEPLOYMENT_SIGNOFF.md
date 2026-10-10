@@ -7,7 +7,8 @@ This is an execution record. A missing result is unknown, not a pass. Repository
 - Canonical repository: `kaustubhdua/Satark`
 - Candidate branch: `main`
 - Approved merge commit: `edfb72c7f5b8654ef4ed76de4a632c59438e220e`
-- UI change PR: [#25](https://github.com/kaustubhdua/Satark/pull/25) (merged)
+- UI change PR: [#25](https://github.com/kaustubhdua/Satark/pull/25) (merged; merge commit `edfb72c7f5b8654ef4ed76de4a632c59438e220e`)
+- Deployment repository inspected read-only: [harshilgupta926/Satark](https://github.com/harshilgupta926/Satark) — older home/FIRSTLIGHT labels remain on its `main` branch
 - CI run on exact PR head `ed44973b458916cd7a9d61cd8b719d65c90f722e`: [run #842](https://github.com/kaustubhdua/Satark/actions/runs/38095332214) — PASS
 - CodeQL run on exact PR head `ed44973b458916cd7a9d61cd8b719d65c90f722e`: [run #311](https://github.com/kaustubhdua/Satark/actions/runs/38095332252) — PASS
 - Public demo URL: https://satark-32uppvjxwmderrchbhj7gj.streamlit.app/
@@ -20,14 +21,14 @@ The exact PR head passed CI and CodeQL before merge. CI included dependency cons
 
 ## P0 — live demonstration smoke test
 
-Status: **BLOCKED / NOT SIGNED OFF**. A live scrape of the public URL returned HTTP 200 and Streamlit shell metadata, but the browser content was an `ERR_BLOCKED_BY_CLIENT` page. This is not evidence that the application workflows are healthy. No hosting dashboard revision was available to match against the approved SHA.
+Status: **FAIL — deployed UI is stale; NOT SIGNED OFF**. An interactive browser session successfully rendered the public app and opened FIRSTLIGHT, but its visible home still contains `SAMPLE`, `ILLUSTRATIVE`, `FLAGSHIP WORKSPACE 01 / 03`, and `Open guided sample report`. FIRSTLIGHT still exposes `Load / reset synthetic incident`. These labels predate PR #25, so the public deployment is not serving the approved UI content. The app is created by `harshilgupta926`; the canonical repo `kaustubhdua/Satark` is a different repository. GitHub integration access to the deployment repository is read-only (branch creation returned 403), and the hosting dashboard revision is not accessible. The live app's home and FIRSTLIGHT entry render, but that does not satisfy the revision identity gate.
 
 | Check | Result | Evidence / notes |
 |---|---|---|
-| Hosting repository and branch | BLOCKED | Hosting dashboard access not available |
+| Hosting repository and branch | PARTIAL | Live shell identifies app creator as `harshilgupta926`; read-only inspection of `harshilgupta926/Satark` shows the older UI copy. Exact host branch still requires dashboard confirmation |
 | Deployed revision equals approved SHA | BLOCKED | No dashboard build SHA or in-app build identifier |
-| Home renders without runtime error | BLOCKED | Browser retrieval returned blocked-client content |
-| FIRSTLIGHT entry / training case | NOT RUN | Needs an interactive browser against the real deployment |
+| Home renders without runtime error | PASS (basic render only) | Interactive browser shows the home UI and navigation; no visible runtime error. This does not verify the deployed revision |
+| FIRSTLIGHT entry / training case | PARTIAL | FIRSTLIGHT opens and the existing synthetic incident is visible; deployed button label is the old `Load / reset synthetic incident`, confirming stale UI |
 | Evidence integrity and tampering | NOT RUN | Needs live interaction |
 | Findings, timeline, gaps | NOT RUN | Needs live interaction |
 | Simulated approval and rejection | NOT RUN | Needs live interaction |
@@ -67,9 +68,9 @@ Not a production approval. Before confidential or multi-tenant use, complete aut
 
 ## Sign-off
 
-- Final status: **BLOCKED — automated PR checks passed; deployed revision and live smoke not verified**
+- Final status: **FAIL / BLOCKED — automated PR checks passed, but the live deployment demonstrably serves older UI content and the approved SHA cannot be deployed from this connection**
 - Candidate SHA: `edfb72c7f5b8654ef4ed76de4a632c59438e220e`
-- Outstanding blockers: hosting dashboard access/revision, live interactive smoke, authorized provider and adversarial tests, host controls/privacy review
+- Outstanding blockers: update deployment repo/host to the approved commit, verify exact deployed SHA, complete remaining live interactive workflows, authorized provider and adversarial tests, host controls/privacy review. GitHub write access to `harshilgupta926/Satark` is unavailable to this integration.
 - Accepted residual risks / owner: not yet assigned
 - Rollback tested: NO / NOT VERIFIED
 - Reviewer: automated repository review; human deployment owner sign-off pending
