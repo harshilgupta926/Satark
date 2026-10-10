@@ -133,5 +133,54 @@ class FirstlightEngineTests(unittest.TestCase):
         self.assertEqual(len(outcome["approver"]), 128)
 
 
+    def test_findings_never_reference_unavailable_or_invalid_evidence(self):
+        # Keep only one valid record: findings may retain their explanatory
+        # labels, but unsupported references must be removed and uncertainty
+        # must be explicit.
+        single = [self.evidence[0]]
+        result = investigate_case(self.case, single)
+        valid_ids = {item["evidence_id"] for item in single}
+        for finding in result["findings"]:
+            self.assertTrue(set(finding["evidence_ids"]).issubset(valid_ids))
+            if not finding["evidence_ids"]:
+                self.assertFalse(finding["evidence_available"])
+                self.assertEqual(finding["state"], "unverified")
+                self.assertEqual(finding["confidence"], "low")
+
+    def test_timeline_places_unparseable_timestamps_last(self):
+        events = [dict(event) for event in self.case["events"]]
+        events[0]["timestamp"] = "not-a-timestamp"
+        evidence = [seal_evidence(event) for event in events]
+        result = investigate_case(self.case, evidence)
+        self.assertEqual(result["timeline"][-1]["event_id"], events[0]["event_id"])
+
+    def test_response_rejection_is_simulated_and_does_not_mark_success(self):
+        result = investigate_case(self.case, self.evidence)
+        proposals, outcome = apply_simulated_response(
+            result["response_proposals"], "ACT-003", False, "reviewer"
+        )
+        self.assertTrue(outcome["simulated"])
+        self.assertEqual(outcome["status"], "rejected")
+        self.assertEqual(
+            next(item for item in proposals if item["action_id"] == "ACT-003")["status"],
+            "rejected",
+        )
+        self.assertNotIn("message", outcome)
+
+    def test_response_approval_never_claims_real_world_execution(self):
+        result = investigate_case(self.case, self.evidence)
+        _, outcome = apply_simulated_response(
+            result["response_proposals"], "ACT-001", True, "reviewer"
+        )
+        self.assertTrue(outcome["simulated"])
+        self.assertEqual(outcome["status"], "simulated_success")
+        self.assertIn("No real", outcome["message"])
+
+    def test_audit_chain_rejects_reordered_entries(self):
+        chain = append_audit([], "created", "tester", {"case": "demo"})
+        chain = append_audit(chain, "reviewed", "tester", {"decision": "reject"})
+        self.assertTrue(verify_audit_chain(chain))
+        self.assertFalse(verify_audit_chain(list(reversed(chain))))
+
 if __name__ == "__main__":
     unittest.main()
