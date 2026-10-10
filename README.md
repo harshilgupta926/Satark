@@ -1,297 +1,496 @@
 <div align="center">
 
-# SATARK
-### Smart AI Threat Analysis & Risk Knowledge
+# SATARK Sentinel
+### Evidence-led incident investigation and AI-assisted digital threat triage
 
-[![Live App](https://img.shields.io/badge/Live%20App-Open%20SATARK-111827?logo=streamlit&logoColor=white)](https://satark-32uppvjxwmderrchbhj7gj.streamlit.app/)
+**Investigate the incident. Trace the evidence. Make the next decision with context.**
 
-<img src="assets/satark-banner.svg" alt="SATARK — Smart AI Threat Analysis & Risk Knowledge" width="1200">  
-[![Security](https://img.shields.io/badge/security-awareness-focused-d7b56f)](SECURITY.md)
+SATARK Sentinel is a security-awareness and incident-investigation prototype built around **FIRSTLIGHT Incident Command**. It combines a deterministic, evidence-linked investigation workflow with optional AI-assisted analysis of suspicious digital content. The goal is to help a person move from scattered signals to a structured, reviewable picture of what may have happened—without presenting an AI score as a verdict.
 
-**Investigate incidents. Preserve evidence. Respond with control.**
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Open%20SATARK-111827?logo=streamlit&logoColor=white)](https://satark-32uppvjxwmderrchbhj7gj.streamlit.app/)
+[![CI](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/kaustubhdua/Satark/actions/workflows/codeql.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/codeql.yml)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
 
-SATARK now includes **FIRSTLIGHT Incident Command** as its flagship workspace for synthetic incident investigation, evidence integrity challenges, evidence-linked timelines, and human-approved simulated response. Existing text, URL, image, QR, PDF, and video scanners remain available as secondary threat-analysis tools.
-
-SATARK is an AI-assisted security-awareness workspace for triaging suspicious messages, links, images, QR codes, PDFs, and supported videos.
-
-It is designed around a simple workflow: **bring the evidence → inspect the signals → review what is and is not corroborated → verify before acting.** The primary workspace prioritizes investigations; learning features remain available without competing with the core flow.
-
-![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
-![Streamlit](https://img.shields.io/badge/Interface-Streamlit-FF4B4B?logo=streamlit&logoColor=white)
-![AI](https://img.shields.io/badge/AI-Groq-111827)
-![Project status](https://img.shields.io/badge/status-active-16a34a)
-![CodeQL](https://github.com/kaustubhdua/Satark/actions/workflows/codeql.yml/badge.svg)
-![CI](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml/badge.svg)
+<img src="assets/satark-banner.svg" alt="SATARK Sentinel" width="1000">
 
 </div>
 
 ---
 
-> **Important:** SATARK is a learning and triage aid—not an antivirus, forensic tool, or proof that content is safe. AI-generated scores are not calibrated probabilities. A suspicious item may be missed, and a legitimate item may be flagged. Independently verify consequential findings.
+> **Prototype and safety boundary:** SATARK is a learning and triage aid, not an antivirus, certified forensic product, or proof that content is safe or malicious. FIRSTLIGHT uses synthetic incident data and simulated response actions. Its session-based audit chain is not independently anchored chain-of-custody evidence. Use synthetic or public, non-sensitive data in the current demo.
 
 ## Contents
 
-- [FIRSTLIGHT Incident Command](#firstlight-incident-command)
-- [What SATARK does](#what-satark-does)
-- [Features](#features)
-- [How it works](#how-it-works)
-- [Technology](#technology)
-- [UI design and motion](#ui-design-and-motion)
-- [Run locally](#run-locally)
-- [Configure Groq](#configure-groq)
-- [Project structure](#project-structure)
-- [Tests and checks](#tests-and-checks)
-- [Security, privacy, and limitations](#security-privacy-and-limitations)
-- [Release readiness](docs/RELEASE_READINESS.md)
-- [Roadmap](#roadmap)
-- [Contributing](#contributing)
+- [1. Executive summary](#1-executive-summary)
+- [2. The problem](#2-the-problem)
+- [3. Our approach](#3-our-approach)
+- [4. Flagship experience: FIRSTLIGHT Incident Command](#4-flagship-experience-firstlight-incident-command)
+- [5. Supporting SATARK threat-analysis tools](#5-supporting-satark-threat-analysis-tools)
+- [6. Example demonstration flow](#6-example-demonstration-flow)
+- [7. What makes the approach different](#7-what-makes-the-approach-different)
+- [8. System design and architecture](#8-system-design-and-architecture)
+- [9. Technology stack](#9-technology-stack)
+- [10. Run the project locally](#10-run-the-project-locally)
+- [11. Configure the AI provider](#11-configure-the-ai-provider)
+- [12. Tests and engineering safeguards](#12-tests-and-engineering-safeguards)
+- [13. Security, privacy, and current limitations](#13-security-privacy-and-current-limitations)
+- [14. Roadmap](#14-roadmap)
+- [15. Project structure](#15-project-structure)
+- [16. Hackathon-ready project summary](#16-hackathon-ready-project-summary)
+- [17. Contributing](#17-contributing)
+- [18. Documentation](#18-documentation)
 
-## FIRSTLIGHT Incident Command
+## 1. Executive summary
 
-Open FIRSTLIGHT from the sidebar to load a repeatable fictional account-compromise scenario. The prototype provides SHA-256 evidence verification, a controlled tampering challenge, a deterministic multi-step investigation workflow, evidence-linked findings, a chronological timeline, explicit evidence gaps, approval/rejection controls for simulated response actions, a hash-chained in-session audit trail, and JSON report export. No real endpoint, account, process, or network action is performed. Read [the FIRSTLIGHT scope and safety boundaries](docs/FIRSTLIGHT.md).
+**SATARK Sentinel** is a browser-based security investigation prototype that connects two complementary capabilities:
 
-## What SATARK does
+1. **FIRSTLIGHT Incident Command — the primary experience:** a guided, repeatable investigation of a fictional account-compromise scenario, with evidence-integrity checks, deterministic rules, evidence-linked findings, a timeline, evidence gaps, and human approval controls for simulated response actions.
+2. **SATARK threat triage — the supporting experience:** AI-assisted analysis of suspicious text, URLs, images, QR codes, PDFs, and supported videos, with local pattern-based signals and explainable next-step guidance.
 
-SATARK provides a single workspace to examine potentially risky digital content and learn about common online scams. Depending on the selected workflow and available dependencies, it can analyze text, URLs, images/QR codes, PDFs, and videos. Results may include a threat category, risk score, confidence value, indicators, and suggested next steps.
+The central design principle is to keep **observations, model interpretation, uncertainty, and response decisions distinct**. The system should help a person understand what the available evidence supports, what remains unknown, and what should be checked next.
 
-The app also includes **Scam Challenge**, **SATARK Academy**, and **Classroom Mode** for security-awareness learning.
+**Current implementation:** a Python/Streamlit application with a Groq integration for supported AI workflows, a deterministic FIRSTLIGHT engine, bounded input-processing helpers, URL-fetching protections, report export, automated tests, and CI/CodeQL workflows.
 
-## Features
+## 2. The problem
 
-| Feature | Description |
+People and small teams often encounter a mix of suspicious messages, links, QR codes, attachments, login alerts, and disconnected event records. The difficulty is not just detecting one suspicious item; it is understanding how separate signals relate, what is actually supported by evidence, and which response step is justified.
+
+Common problems include:
+
+- **Fragmented evidence:** clues arrive in different formats and at different times.
+- **Over-trusting a score:** a risk number can look definitive even when evidence is incomplete.
+- **Unclear reasoning:** users may not know which observable signal supports a finding.
+- **Missing context:** a workflow may report a suspicious event without clearly showing what is still unknown.
+- **Premature action:** a response can be initiated before a person has reviewed the available information.
+- **Difficult learning:** security-awareness tools often teach isolated red flags rather than a structured investigation process.
+
+SATARK Sentinel is designed as a prototype response to these workflow problems. It organizes evidence and review steps; it does not claim to replace security professionals, endpoint detection, or a production incident-response platform.
+
+## 3. Our approach
+
+The project follows an **evidence-first, human-reviewed workflow**:
+
+1. **Collect** a synthetic incident scenario or a supported suspicious digital artifact.
+2. **Validate and prepare** the input using format-specific limits and checks.
+3. **Extract observable signals** with deterministic rules where applicable.
+4. **Use AI as an assistant** for supported content-analysis workflows, not as the sole source of truth.
+5. **Correlate and review** findings, timestamps, evidence references, and gaps.
+6. **Decide with a human in the loop** using explicit approval/rejection controls in the FIRSTLIGHT simulation.
+7. **Export or revisit** the resulting report or current-session history where supported.
+
+The product keeps two modes clear: FIRSTLIGHT demonstrates an explainable, deterministic investigation workflow over synthetic data; the scanners help triage suspicious content and may use an external AI provider. These are related parts of one security workflow, but they have different trust and data-handling boundaries.
+
+## 4. Flagship experience: FIRSTLIGHT Incident Command
+
+FIRSTLIGHT is the main workspace and the best place to start a demonstration. It loads a fictional account-compromise scenario so the investigation can be explored without requiring a live attack, real account access, or sensitive incident evidence.
+
+### Capabilities
+
+- **Repeatable synthetic scenario:** explore a consistent incident story and its supporting artifacts.
+- **SHA-256 integrity verification:** calculate and check hashes for supported evidence artifacts.
+- **Tampering challenge:** demonstrate how changing an artifact can affect an integrity check.
+- **Deterministic investigation workflow:** apply explicit rules to the available event/evidence data rather than relying on a language model to invent an incident narrative.
+- **Evidence-linked findings:** connect findings to the available evidence references so a reviewer can inspect the basis for a conclusion.
+- **Chronological timeline:** put normalized incident events into time order to make sequences easier to understand.
+- **Evidence-gap reporting:** call out unanswered questions and missing corroboration rather than implying the investigation is complete.
+- **Human review controls:** approve or reject proposed response steps within the simulation.
+- **Hash-chained in-session audit trail:** demonstrate how ordered review events can be linked together and checked for tampering during the current session.
+- **JSON export:** export supported investigation output for inspection or downstream prototyping.
+
+### What FIRSTLIGHT does not do
+
+FIRSTLIGHT does **not** disable a real account, terminate a process, isolate an endpoint, contact an identity provider, or perform a real network response. The response controls are a prototype simulation. The current audit chain is held in session and is not a durable, independently anchored log or a certified forensic chain of custody. Evidence integrity checks establish whether bytes match a computed hash; they do not establish where evidence came from or whether it is truthful.
+
+See [FIRSTLIGHT scope and safety boundaries](docs/FIRSTLIGHT.md).
+
+## 5. Supporting SATARK threat-analysis tools
+
+The existing scanners remain available as supporting workflows.
+
+| Workflow | What it supports | Important boundary |
+| --- | --- | --- |
+| Text analysis | Reviews pasted messages and text for suspicious patterns and requests an AI-assisted assessment when configured. | Model interpretation can be wrong or incomplete. |
+| URL analysis | Validates a URL, safely fetches eligible public-page text, and assesses available content. | URL-fetch protections are defense in depth, not a substitute for host-level egress controls. |
+| Image analysis | Sends supported image content for AI-assisted inspection. | Image analysis does not execute files or prove that an image is benign. |
+| QR analysis | Extracts/inspects QR content through the supported image workflow. | A decoded destination still needs independent verification. |
+| PDF analysis | Extracts supported PDF text and analyses it. | This is not a malware sandbox or exhaustive file scan. |
+| Video analysis | Samples representative frames; audio transcription may be available when FFmpeg and provider support are present. | Frame sampling and optional transcription can miss important content. |
+| Deterministic signal ledger | Shows local pattern-based observations such as urgency, credential requests, payment language, URL/shortener patterns, and phone/UPI-like identifiers where applicable. | A pattern match is a review signal, not proof of fraud. |
+| Evidence coverage review | Highlights when a broad AI assessment lacks independent local text-rule observations and treats visual workflows separately. | It is a coverage check, not claim-by-claim verification of the model's response. |
+| PDF report | Produces a downloadable report for a supported analysis. | A generated report is not a certified forensic report. |
+| Session history | Allows results to be revisited within the current app session. | History is not durable case storage and may not survive a session restart. |
+| Security learning | Includes Scam Challenge, SATARK Academy, and Classroom Mode. | Learning content is for awareness and practice, not professional certification. |
+
+### Input limits and optional tools
+
+Input handling applies format-specific bounds before processing. The configured Streamlit upload ceiling is 50 MB; PDF and image processing use stricter per-format limits. Video frame extraction uses OpenCV. Audio extraction/transcription from video additionally depends on FFmpeg being installed and the configured provider supporting the workflow. Exact supported behavior can depend on input format, installed dependencies, and provider availability.
+
+## 6. Example demonstration flow
+
+This is a suggested product walkthrough, not a claim that a real incident was detected.
+
+1. **Open FIRSTLIGHT.** Introduce the fictional account-compromise scenario and its evidence artifacts.
+2. **Verify integrity.** Show the SHA-256 check, then use the controlled tampering challenge to illustrate why integrity checks matter.
+3. **Run the investigation.** Walk through deterministic findings and the evidence references associated with them.
+4. **Inspect the timeline.** Explain how event ordering supports or weakens a possible sequence of events.
+5. **Review the gaps.** Show which questions remain unanswered and why a reviewer should avoid overstating the conclusion.
+6. **Review a simulated response.** Approve or reject a proposed action and show the resulting in-session audit events.
+7. **Export the result.** Demonstrate the supported JSON export.
+8. **Connect the supporting scanner.** Submit a harmless sample message or public, non-sensitive URL to SATARK's triage workflow; compare local signals with the AI interpretation and explain why neither should be treated as a verdict.
+
+**Demo safety:** use only the built-in synthetic scenario and harmless/public, non-sensitive examples. Do not demonstrate using real credentials, OTPs, private keys, confidential incident evidence, or unauthorized targets.
+
+## 7. What makes the approach different
+
+The project's intended differentiators are workflow and transparency, not a claim of superior detection accuracy.
+
+- **Evidence before narrative:** FIRSTLIGHT starts from available artifacts and deterministic rules, rather than asking an AI model to invent the incident sequence.
+- **Visible uncertainty:** evidence gaps are part of the result, not hidden behind a single score.
+- **Human approval in the loop:** response steps are explicitly reviewed in the simulation.
+- **Integrity as a demonstrable concept:** SHA-256 verification and a tampering challenge make artifact-integrity concepts tangible.
+- **Separate local signals from AI interpretation:** pattern observations and model output are presented as different kinds of evidence.
+- **Multiple input types:** supporting scanners provide a single entry point for several common suspicious-content formats.
+- **Safety-aware design:** bounded inputs, URL destination validation, redirect checks, normalized model results, and regression tests reduce specific classes of avoidable failures.
+- **Accessible learning path:** the learning features provide an entry point for people building basic scam-awareness skills.
+
+These are implementation goals and demonstrated prototype behaviors. The repository does not yet establish detection precision/recall, reduced incident-response time, production-scale performance, or superiority to commercial security tools; those claims would require measured evaluation.
+
+## 8. System design and architecture
+
+### High-level architecture
+
+~~~text
+                       SATARK Sentinel
+                              |
+               +--------------+--------------+
+               |                             |
+     FIRSTLIGHT Incident Command      Threat-analysis tools
+               |                             |
+       Synthetic incident data        Text / URL / image /
+               |                       QR / PDF / video
+       Input + hash checks                    |
+               |                      Bounded preparation
+       Deterministic rules                    |
+               |                  +-----------+-----------+
+       Evidence-linked findings   |                       |
+               |              Local signals          Groq provider
+       Timeline + evidence gaps       |                       |
+               |                      +-----------+-----------+
+       Human-reviewed simulated                  |
+       response and audit events          Normalized assessment
+               |                                  |
+        JSON export / UI                   Review UI / PDF report
+               |                                  |
+               +----------------+-----------------+
+                                |
+                    Streamlit interface/session
+~~~
+
+### Main trust boundaries
+
+1. **Browser to Streamlit:** browser/UI state is presentation state and is not trusted as durable evidence.
+2. **Input to preprocessing:** uploaded and pasted content is subject to format-specific bounds and validation.
+3. **Server to user-supplied URL:** URL retrieval is an SSRF-sensitive operation. The implementation validates eligible HTTP(S) destinations, checks DNS results, pins connections to validated IPs, revalidates redirects, blocks HTTPS-to-HTTP downgrade redirects, and limits response size/type.
+4. **Application to Groq:** prepared evidence may leave the application when the user explicitly starts a provider-backed AI analysis.
+5. **Session state to persistence:** current history and FIRSTLIGHT audit events are session-scoped, not durable multi-user case storage.
+
+### Processing flow for a scanner
+
+1. User selects a workflow and supplies input.
+2. The relevant input processor validates and bounds the content.
+3. Supported local deterministic signals are extracted where applicable.
+4. If the user requests AI analysis and a valid provider configuration is available, the prepared evidence is sent to Groq.
+5. The result is parsed and normalized before it is shown.
+6. The UI presents the result, relevant signals, limitations, and suggested next steps; supported reports can be exported.
+
+### Processing flow for FIRSTLIGHT
+
+1. Load the built-in fictional incident and its artifacts.
+2. Verify supported evidence hashes and optionally demonstrate tampering.
+3. Normalize and evaluate the scenario using deterministic investigation rules.
+4. Generate findings with evidence references, timeline context, and explicit gaps.
+5. Record human approval/rejection choices as simulated events in the current session.
+6. Export supported investigation output as JSON.
+
+More detail is available in [Architecture and threat model](docs/ARCHITECTURE.md).
+
+## 9. Technology stack
+
+| Technology | Role |
 | --- | --- |
-| Text analysis | Review suspicious messages and other text for scam indicators. |
-| URL analysis | Validate and retrieve eligible public-page text for analysis. |
-| Image and QR analysis | Submit supported images and QR-code content for review. |
-| PDF analysis | Extract text from supported PDF documents and analyze it. |
-| Video analysis | Extract representative frames; optionally transcribe audio when the workflow and provider support it. |
-| AI-assisted results | Present a model-generated assessment, indicators, and suggested actions. |
-| Deterministic evidence ledger | Separately shows local pattern-based observations such as URLs, known shorteners, phone/UPI-like identifiers, urgency, credential requests, and payment language. These are review signals—not proof of fraud or safety. |
-| Evidence coverage review | Flags broad AI assessments that lack independent text-rule observations, and treats visual workflows separately. It is a coverage check—not claim-by-claim verification. |
-| Responsive investigation workspace | Focused navigation, a guided offline sample, mobile-aware layouts, and clear separation between evidence, AI interpretation and next steps. |
-| PDF export | Download a report of an analysis. |
-| FIRSTLIGHT event import | Import bounded JSON/CSV event exports, normalize timestamps, hash the original artifact, and run explainable evidence-linked rules without sending imported data to an AI provider. |
-| Session history | Revisit results held in the current app session. |
-| Learning | Practice scam recognition and explore security-awareness content. |
+| Python | Core application, input processing, rules, orchestration, and tests |
+| Streamlit | Web interface, navigation, and session state |
+| Groq API | Optional AI-assisted text/vision workflows and supported transcription |
+| pypdf | PDF text extraction |
+| Pillow | Image loading and conversion |
+| OpenCV | Video frame extraction |
+| FFmpeg | Optional audio-track extraction for supported video transcription |
+| ReportLab | PDF report generation |
+| CSS | Responsive styling, visual hierarchy, subtle motion, and reduced-motion support |
+| unittest | Automated unit and regression tests |
+| GitHub Actions | CI checks and browser smoke/layout validation |
+| CodeQL | Static security analysis workflow |
 
-Some workflows depend on external provider access or optional system tools. Video uploads are capped at 50 MB to match the Streamlit server upload budget. Video frame analysis uses OpenCV; video audio transcription additionally requires FFmpeg to be installed on the host. A completed analysis does not mean that a file was executed in a sandbox or exhaustively scanned.
+The application is primarily Python/Streamlit. Its styling uses a dedicated CSS layer and native Streamlit UI components rather than requiring a separate React application. Animations are restrained and support reduced-motion preferences.
 
-## How it works
+Model availability and exact model choices are controlled by the configured provider and the model-selection code; provider availability, account access, rate limits, and model deprecations can change independently of this repository.
 
-1. **Choose a workflow** and provide the content you want to examine.
-2. **Prepare the input.** Depending on the workflow, SATARK may extract text, inspect image content, or sample video frames.
-3. **Extract local signals.** For supported text inputs, SATARK records deterministic pattern matches separately from model output; this step makes no network requests and does not decide whether content is malicious.
-4. **Request an AI assessment.** Supported analysis is sent to the configured Groq service.
-5. **Review the result.** Inspect the evidence ledger, then the evidence-coverage review, AI interpretation and next steps. The coverage check does not validate every AI claim; treat the output as triage, not a definitive security verdict.
-6. **Learn and report.** Use the learning sections or export a PDF when useful.
-
-Do not submit passwords, one-time codes, private keys, or unnecessary personal information.
-
-## Technology
-
-- **Python** — application logic
-- **Streamlit** — interactive web interface and session state
-- **CSS** — dependency-free visual system, responsive layout, micro-interactions and reduced-motion support
-- **Native Streamlit UI** — layout, navigation, learning and onboarding surfaces without a second browser runtime
-- **Groq** — AI model API and supported audio transcription
-  - Text workflows prefer `openai/gpt-oss-120b`, with `openai/gpt-oss-20b` as fallback when available.
-  - Vision workflows use `qwen/qwen3.8-27b`, subject to the API key's available models.
-- **pypdf** — PDF text extraction
-- **Pillow** — image handling and conversion
-- **ReportLab** — PDF report generation
-- **OpenCV** — video frame extraction
-- **FFmpeg** — optional audio-track extraction for video transcription
-
-The repository separates analysis, input processing, findings, security, provider, media processing, reporting and major UI responsibilities into modules. The visual layer is CSS-first and the onboarding workflow uses native Streamlit rendering, so the core interface does not depend on a second browser runtime or a third-party JavaScript CDN. `satark.py` remains the orchestration layer, while provider, processing and UI responsibilities are extracted into focused modules.
-
-## UI design and motion
-
-The interface takes inspiration from the craft and interaction principles demonstrated by [React Bits](https://github.com/DavidHDev/react-bits)—layered visual depth, restrained motion, responsive component layouts and clear interaction feedback—while adapting those principles to Streamlit instead of shipping a separate React runtime. SATARK uses its own CSS implementation; React Bits is an inspiration reference, not a runtime dependency. Animations are subtle, CSS-only and disabled for users who request reduced motion. Expensive analysis and media processing start only after an explicit user action, and uploads are bounded before processing.
-
-Design and release checks are documented in [UI design notes](docs/UI_DESIGN.md) and [release readiness](docs/RELEASE_READINESS.md).
-
-## Run locally
+## 10. Run the project locally
 
 ### Requirements
 
 - Python 3.10 or newer
-- A Groq API key for AI-powered workflows
-- Dependencies listed in `requirements.txt`
+- Git
+- Dependencies in requirements.txt
+- A Groq API key only if you want to exercise provider-backed workflows
+- FFmpeg only if you want to test the optional video-audio transcription path
 
 ### Install
 
-Clone the repository and enter its directory:
-
-```bash
+~~~bash
 git clone https://github.com/kaustubhdua/Satark.git
 cd Satark
 python -m venv .venv
-```
+~~~
 
-Activate the environment.
+Activate the environment:
 
 **Windows PowerShell**
-```powershell
+
+~~~powershell
 .venv\Scripts\Activate.ps1
-```
+~~~
 
 **macOS / Linux**
-```bash
+
+~~~bash
 source .venv/bin/activate
-```
+~~~
 
-Install dependencies and start Streamlit:
+Install dependencies and launch the app:
 
-```bash
+~~~bash
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 streamlit run satark.py
-```
+~~~
 
-Streamlit will print a local address in the terminal. Open it in your browser.
+Streamlit prints the local URL in the terminal. Open that address in your browser. The built-in FIRSTLIGHT scenario and offline sample are intended to make parts of the prototype explorable without live provider credentials.
 
-## Configure Groq
+## 11. Configure the AI provider
 
-Set `GROQ_API_KEY` in your environment before starting the app. On Streamlit Community Cloud, add it under **App settings → Secrets** as `GROQ_API_KEY = "your-key"`; SATARK reads Streamlit-managed secrets first and falls back to the environment variable.
+SATARK reads GROQ_API_KEY from Streamlit-managed secrets first and can fall back to the environment variable.
 
-**Windows PowerShell**
-```powershell
+### Windows PowerShell
+
+~~~powershell
 $env:GROQ_API_KEY="your-key"
 streamlit run satark.py
-```
+~~~
 
-**macOS / Linux**
-```bash
+### macOS / Linux
+
+~~~bash
 export GROQ_API_KEY="your-key"
 streamlit run satark.py
-```
+~~~
 
-If the app offers a sidebar key field, it can also be used for local experimentation. Never commit API keys or place them in public source files. For deployments, use the hosting provider's secret manager.
+### Streamlit Community Cloud
 
-## Project structure
+In the app's **Settings → Secrets**, add:
 
-```text
+~~~toml
+GROQ_API_KEY = "your-key"
+~~~
+
+Use your own key from the official [Groq Console](https://console.groq.com/). Never commit secrets, paste them into issues, or place them in browser-visible code. Use the hosting platform's secret manager for deployed environments. If a key may have been exposed, revoke/rotate it.
+
+**Privacy note:** provider-backed analysis may transmit the prepared input to Groq. Review provider data-handling terms and your own legal/privacy requirements before sending sensitive content. For the current hackathon demo, use synthetic or non-sensitive data.
+
+## 12. Tests and engineering safeguards
+
+Run the repository's local checks:
+
+~~~bash
+python -m pip check
+python -m compileall -q .
+python -m unittest discover -s tests -v
+~~~
+
+The test suite covers areas including:
+
+- AI-provider configuration and model selection
+- Analysis normalization and stable finding behavior
+- FIRSTLIGHT investigation and evidence-ingestion rules
+- Input-processing boundaries and safe error handling
+- URL validation, redirect handling, and SSRF-related edge cases
+- Evidence-coverage review behavior
+- PDF report generation
+- Video-processing helpers
+- UI contracts and Scam Challenge behavior
+
+GitHub Actions also runs dependency/compile/test checks, browser smoke and layout checks, asset/style/whitespace validation, and a CodeQL workflow. Consult the [CI workflow](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml) and [CodeQL workflow](https://github.com/kaustubhdua/Satark/actions/workflows/codeql.yml) for current run status.
+
+**A passing test suite is evidence of the checks that ran, not proof of production readiness.** Live provider behavior, host configuration, external data handling, deployment revision, and manual device testing require separate verification. See the [release-readiness runbook](docs/RELEASE_READINESS.md).
+
+## 13. Security, privacy, and current limitations
+
+### Current safeguards
+
+- Input-processing paths use format-specific size and parsing limits.
+- URL fetching rejects unsafe destinations, validates resolved addresses, pins connections, rechecks redirects, and restricts response types and size.
+- AI results are normalized before display; the model is treated as an untrusted analyzer.
+- User-facing error handling is designed not to expose raw provider payloads or secrets.
+- API keys belong in environment variables or a host secret manager—not source control.
+- CI and CodeQL provide repeatable checks for regressions.
+
+### Known limitations and release gates
+
+- **No verified authentication/authorization or tenant isolation:** do not use this deployment for confidential multi-user cases.
+- **No durable case/evidence storage:** Streamlit session state is temporary and is not a case-management database.
+- **No independently anchored evidence manifest:** a computed hash is useful for integrity comparison, but provenance and independent custody are separate questions.
+- **Session-scoped audit chain:** FIRSTLIGHT's audit chain is a demonstration, not a durable tamper-evident enterprise audit service.
+- **Process-local rate limiting:** the application limiter is not a distributed/global quota and cannot by itself control usage across replicas or restarts.
+- **Hosting-level controls need verification:** request-body limits, concurrency, execution timeouts, egress restrictions, abuse controls, and cost ceilings must be verified at the deployment layer.
+- **Live-provider checks need an authorized test key:** success, timeout, invalid key, unavailable model, malformed response, and rate-limit behavior require target-environment tests.
+- **Detection quality has not been benchmarked:** precision, recall, false-positive rate, evidence-grounding quality, and latency require a defined dataset and repeatable evaluation.
+- **Privacy and provider review remains necessary:** assess data processing/retention terms and provide appropriate notice, retention/deletion behavior, and incident ownership before handling real user data.
+- **Not a malware sandbox or certified forensic platform:** the app does not execute suspicious files in an isolated environment or guarantee exhaustive inspection.
+
+### Recommended use right now
+
+Use SATARK Sentinel for **hackathon demonstration, supervised exploration, and synthetic/non-sensitive test inputs**, after checking the exact deployed revision. Do not use it as the sole basis for security decisions or for confidential, regulated, or real incident evidence.
+
+See [Security policy](SECURITY.md), [Analysis limitations](docs/ANALYSIS_LIMITATIONS.md), [Architecture](docs/ARCHITECTURE.md), and [Release readiness](docs/RELEASE_READINESS.md).
+
+## 14. Roadmap
+
+The following is a forward-looking roadmap, not a claim that every item is implemented.
+
+### Near-term: demonstration quality and reliability
+- [ ] Complete target-deployment smoke tests against the exact deployed commit.
+- [ ] Test live provider success and failure modes using a dedicated, authorized test key.
+- [ ] Expand adversarial tests for malformed/encrypted PDFs, image edge cases, video edge cases, and URL abuse cases.
+- [ ] Keep the README, architecture notes, demo flow, and release sign-off aligned with the actual code.
+
+### Next: stronger investigation workflow
+- [ ] Design durable case and evidence storage with explicit retention/deletion behavior.
+- [ ] Add authenticated access and authorization/tenant-isolation boundaries before multi-user sensitive use.
+- [ ] Design independently verifiable evidence manifests and durable audit records.
+- [ ] Add clear case lifecycle, export validation, and audit verification UX.
+- [ ] Measure investigation usefulness with a repeatable synthetic dataset and human-reviewed rubric.
+
+### Later: operational readiness
+- [ ] Add deployment-level global quotas, concurrency controls, cost limits, monitoring, and alerting.
+- [ ] Verify restrictive egress policy in the actual hosting environment.
+- [ ] Document incident response, backup/restore, rollback, and ownership.
+- [ ] Establish evaluation metrics for accuracy, false positives, grounding, latency, and robustness.
+- [ ] Complete privacy/provider review before permitting sensitive evidence.
+
+## 15. Project structure
+
+~~~text
 .
 ├── .github/
-│   ├── ISSUE_TEMPLATE/
-│   │   ├── bug_report.yml
-│   │   └── feature_request.yml
-│   ├── workflows/
-│   │   ├── ci.yml
-│   │   └── codeql.yml
-│   ├── PULL_REQUEST_TEMPLATE.md
-│   └── dependabot.yml
+│   └── workflows/              # CI and CodeQL workflows
 ├── .streamlit/
-│   └── config.toml
+│   └── config.toml             # Streamlit runtime defaults
 ├── assets/
 │   └── satark-banner.svg
 ├── docs/
 │   ├── ANALYSIS_LIMITATIONS.md
 │   ├── ARCHITECTURE.md
 │   ├── FIRSTLIGHT.md
-│   ├── UI_DESIGN.md
-│   └── RELEASE_READINESS.md
-├── tests/
-│   ├── e2e_smoke.py
-│   ├── test_ai_provider.py
-│   ├── test_analysis_engine.py
-│   ├── test_firstlight_engine.py
-│   ├── test_firstlight_ingest.py
-│   ├── test_input_processing.py
-│   ├── test_reports.py
-│   ├── test_review_engine.py
-│   ├── test_satark_utils.py
-│   ├── test_satark_utils_urls.py
-│   ├── test_scam_challenge.py
-│   ├── test_ui_contracts.py
-│   ├── test_url_security.py
-│   └── test_video_processing.py
-├── ui/
-│   ├── home.py
-│   ├── navigation.py
-│   ├── results.py
-│   ├── history.py
-│   ├── learning.py
-│   ├── demo.py
-│   └── firstlight.py
-├── analysis_engine.py
-├── ai_provider.py
-├── config.py
-├── evidence_engine.py
-├── findings.py
-├── firstlight_engine.py
-├── firstlight_ingest.py
-├── input_processing.py
-├── radar_background.py
-├── reports.py
-├── review_engine.py
-├── scam_challenge.py
-├── satark.py
-├── satark_utils.py
-├── stepper_component.py
-├── url_security.py
-├── video_processing.py
-├── styles.css
+│   ├── RELEASE_READINESS.md
+│   └── UI_DESIGN.md
+├── tests/                       # Unit, regression, and smoke tests
+├── ui/                          # Streamlit workspace modules
+├── analysis_engine.py            # Analysis normalization and risk logic
+├── ai_provider.py                # Provider configuration/model helpers
+├── config.py                     # Runtime and processing limits
+├── evidence_engine.py            # Deterministic signal extraction
+├── findings.py                   # Finding normalization/contracts
+├── firstlight_engine.py          # FIRSTLIGHT investigation workflow
+├── firstlight_ingest.py          # Bounded event/artifact ingestion
+├── input_processing.py           # Bounded text/PDF/image input processing
+├── reports.py                    # PDF report generation
+├── review_engine.py              # Evidence-coverage review
+├── satark.py                     # Streamlit app entry point/orchestration
+├── satark_utils.py               # Shared utility functions
+├── url_security.py               # URL validation and safe public fetching
+├── video_processing.py           # Video frame/audio helpers
+├── styles.css                    # Responsive visual system
 ├── requirements.txt
+├── SECURITY.md
 ├── CONTRIBUTING.md
-├── README.md
-└── SECURITY.md
-```
+└── README.md
+~~~
 
-## Tests and checks
+## 16. Hackathon-ready project summary
 
-Install the project dependencies, then run:
+Use this section as a source for a pitch deck. Adapt it to the event's required format and only make claims the team can demonstrate.
 
-```bash
-python -m pip check
-python -m compileall -q .
-python -m unittest discover -s tests -v
-```
+### One-line description
 
-These checks cover dependency consistency, full Python compilation, analysis normalization, URL safety, evidence coverage review, PDF content, UI contracts, provider selection, media processing, and layout/source hygiene. CI also runs desktop/mobile browser smoke checks, including the offline sample and PDF download. They do **not** replace manual testing of live Groq requests, deployment configuration, or end-to-end file processing.
+**SATARK Sentinel is an evidence-first security investigation prototype that helps users structure a synthetic incident, inspect evidence-linked findings and gaps, and triage suspicious digital content with optional AI assistance.**
 
-GitHub Actions also runs CodeQL. A passing unit-test run alone does not establish production readiness, but the repository now has explicit automated gates for the highest-risk source and dependency regressions.
+### Short abstract
 
-## Security, privacy, and limitations
+Digital threats often arrive as disconnected messages, links, attachments, and event records. SATARK Sentinel combines FIRSTLIGHT Incident Command—a deterministic investigation workflow over a synthetic account-compromise scenario—with supporting AI-assisted scanners for suspicious text, URLs, images, QR codes, PDFs, and supported videos. It highlights observable signals, evidence references, timelines, and unanswered questions, while keeping human review central to simulated response decisions. The prototype is built with Python and Streamlit, uses Groq for supported AI workflows, and includes regression tests and automated CI checks. It is intended for awareness, demonstration, and triage—not as a replacement for professional incident response or a certified forensic system.
 
-- **Treat results as advisory.** AI can make mistakes, and attackers can adapt their content.
-- **Do not interact with suspicious content** just to confirm a result. Avoid opening suspicious links or executing attachments.
-- **Minimize sensitive input.** Do not submit passwords, OTPs, private keys, or data you do not need analyzed.
-- **Understand external processing.** Content submitted for AI analysis may be sent to the configured provider. Review the provider's data-handling terms before using sensitive material.
-- **Do not treat session history as evidence storage.** It is not a secure, durable case-management system.
-- **Use deployment safeguards.** Restrict access where appropriate, keep secrets out of source control, set upload/request limits, and apply network egress controls.
+### Problem statement
 
-See [Analysis limitations](docs/ANALYSIS_LIMITATIONS.md), the [Security policy](SECURITY.md), and the [Release readiness runbook](docs/RELEASE_READINESS.md) for deployment gates. The default Streamlit configuration hides exception details and caps uploads at 50 MB, but host-level concurrency, request, and network egress controls still need separate verification.
+Users need a clearer way to move from disconnected digital warning signs to an evidence-informed next step. A single risk score does not explain the evidence, its gaps, or the limits of a conclusion.
 
-## Roadmap
+### Proposed solution
 
-- [x] Move application styling into a dedicated CSS file.
-- [x] Extract shared text/result helpers.
-- [x] Isolate URL validation and public-page fetching.
-- [x] Extract PDF report generation.
-- [x] Extract Scam Challenge into its own module.
-- [x] Extract video processing helpers.
-- [x] Add unit tests for shared helpers and video processing.
-- [x] Extract Groq client and model-selection helpers from the Streamlit entry point.
-- [x] Add broader workflow and end-to-end tests.
-- [x] Pin runtime dependencies and add automated CI validation.
-- [x] Keep the unit-test suite aligned with the current dependency-free UI architecture.
-- [x] Add a deterministic evidence-coverage review and export it with the PDF report.
-- [x] Prioritize the evidence-first investigation flow in the responsive workspace.
-- [x] Verify that provider model-discovery failures are not reported as successful connections.
-- [x] Document the deployment security checklist and URL-fetching threat model.
-- [x] Exercise all six scanner-selection states and contextual guidance in the browser smoke suite without requiring provider credentials.
-- [ ] Add deployment-specific live tests for provider-backed analysis and file-processing workflows; these require configured secrets and a target-host environment.
-- [x] Hide hosted exception details and align the video byte limit with the 50 MB Streamlit upload cap.
-- [x] Read `GROQ_API_KEY` from Streamlit Community Cloud secrets as well as environment variables.
-- [x] Add a release-readiness runbook with explicit go/no-go criteria and deployment verification steps.
+Provide a guided investigation workspace that links deterministic findings to available evidence, displays a timeline and evidence gaps, and lets a human review simulated response actions—alongside optional AI-assisted scanning of common suspicious-content formats.
 
-## Contributing
+### Key demo-able capabilities
 
-Focused improvements and bug fixes are welcome. Please:
+- Synthetic account-compromise investigation in FIRSTLIGHT.
+- SHA-256 evidence integrity check and controlled tampering demonstration.
+- Deterministic evidence-linked findings and chronological timeline.
+- Explicit evidence gaps and simulated human approval/rejection.
+- In-session hash-chained audit demonstration and JSON export.
+- Supporting text/URL/image/QR/PDF/video triage workflows.
+- Local pattern signals separated from AI interpretation.
+- PDF reporting, learning content, and automated regression checks.
 
-1. Keep changes small and explain their purpose.
-2. Add or update tests for behavior changes.
-3. Run the checks above and report what was actually verified.
-4. Never commit credentials, tokens, or real sensitive user content.
-5. Report security vulnerabilities privately using the process in [SECURITY.md](SECURITY.md), rather than opening a public issue.
+### Target users and use cases
+
+Potential audiences include students learning cyber safety, awareness trainers, hackathon evaluators, and teams exploring how to structure an initial triage workflow. Any real-world deployment would need appropriate access controls, data-handling review, operational safeguards, and validation first.
+
+### Current status and honest claim boundary
+
+The repository contains a working prototype and automated tests. The live application is available at the demo link above, but deployment revision and all provider-backed paths must be checked in the target environment before claiming a fully verified release. No measured detection benchmark, production multi-tenant security, durable evidence custody, or real response integration is claimed.
+
+## 17. Contributing
+
+Contributions are welcome, especially focused improvements to reliability, accessibility, investigation clarity, and tests.
+
+1. Keep changes focused and explain the behavior being changed.
+2. Add regression tests for bug fixes and new behavior.
+3. Run the local checks and report exactly which checks passed.
+4. Never commit API keys, tokens, private incident evidence, or other sensitive data.
+5. Report suspected vulnerabilities through the process in [SECURITY.md](SECURITY.md), rather than posting sensitive details publicly.
+
+## 18. Documentation
+
+- [FIRSTLIGHT workflow and safety boundaries](docs/FIRSTLIGHT.md)
+- [Architecture and threat model](docs/ARCHITECTURE.md)
+- [Analysis limitations](docs/ANALYSIS_LIMITATIONS.md)
+- [UI design notes](docs/UI_DESIGN.md)
+- [Release readiness and deployment sign-off](docs/RELEASE_READINESS.md)
+- [Security policy](SECURITY.md)
+- [Contributing guide](CONTRIBUTING.md)
+
+---
+
+<div align="center">
+
+**SATARK Sentinel — evidence first, AI assisted, human reviewed.**
+
+</div>
