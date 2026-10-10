@@ -33,6 +33,22 @@ class FirstlightEngineTests(unittest.TestCase):
         item = {"evidence_id": "EV-001", "record": "not-an-object", "sha256": "abc"}
         result = verify_evidence(item)
         self.assertFalse(result["valid"])
+        self.assertFalse(verify_evidence(None)["valid"])
+
+    def test_investigate_case_rejects_malformed_case_and_evidence_container(self):
+        for malformed_case in (None, [], {}, {"case_id": ""}, {"case_id": None}):
+            with self.subTest(case=malformed_case):
+                with self.assertRaises(ValueError):
+                    investigate_case(malformed_case, self.evidence)
+        for malformed_evidence in (None, {}, "not-a-list"):
+            with self.subTest(evidence=malformed_evidence):
+                with self.assertRaises(ValueError):
+                    investigate_case(self.case, malformed_evidence)
+
+    def test_investigate_case_ignores_malformed_items_inside_evidence_list(self):
+        result = investigate_case(self.case, [None, "bad-record", *self.evidence])
+        self.assertEqual(result["case_id"], self.case["case_id"])
+        self.assertTrue(result["timeline"])
 
     def test_findings_reference_evidence(self):
         result = investigate_case(self.case, self.evidence)
@@ -58,6 +74,20 @@ class FirstlightEngineTests(unittest.TestCase):
         chain[0]["payload"]["case"] = "altered"
         self.assertFalse(verify_audit_chain(chain))
 
+    def test_audit_append_rejects_corrupted_chain_and_invalid_inputs(self):
+        chain = append_audit([], "created", "tester", {"case": "demo"})
+        corrupted = [dict(chain[0], entry_hash="tampered")]
+        for entries, action, actor, payload in (
+            (corrupted, "next", "tester", {}),
+            (None, "next", "tester", {}),
+            ([], "", "tester", {}),
+            ([], "next", "", {}),
+            ([], "next", "tester", []),
+        ):
+            with self.subTest(entries=entries, action=action, actor=actor, payload=payload):
+                with self.assertRaises(ValueError):
+                    append_audit(entries, action, actor, payload)
+
     def test_response_is_simulated_and_requires_explicit_approval(self):
         result = investigate_case(self.case, self.evidence)
         proposals, rejected = apply_simulated_response(result["response_proposals"], "ACT-001", False, "reviewer")
@@ -78,10 +108,29 @@ class FirstlightEngineTests(unittest.TestCase):
     def test_malformed_audit_entries_fail_closed(self):
         self.assertFalse(verify_audit_chain([None]))
         self.assertFalse(verify_audit_chain([{"previous_hash": "GENESIS"}]))
+        self.assertFalse(verify_audit_chain(None))
+        cyclic = {}
+        cyclic["self"] = cyclic
+        self.assertFalse(verify_audit_chain([{
+            "previous_hash": "GENESIS",
+            "payload": cyclic,
+            "entry_hash": "not-a-valid-hash",
+        }]))
 
     def test_unknown_action_fails_closed(self):
         with self.assertRaises(ValueError):
             apply_simulated_response([], "ACT-404", True, "reviewer")
+        with self.assertRaises(ValueError):
+            apply_simulated_response(None, "ACT-001", True, "reviewer")
+        with self.assertRaises(ValueError):
+            apply_simulated_response([None], "ACT-001", True, "reviewer")
+
+    def test_approver_label_is_bounded(self):
+        result = investigate_case(self.case, self.evidence)
+        _, outcome = apply_simulated_response(
+            result["response_proposals"], "ACT-001", True, "x" * 500
+        )
+        self.assertEqual(len(outcome["approver"]), 128)
 
 
 if __name__ == "__main__":

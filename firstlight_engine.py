@@ -60,6 +60,12 @@ def create_demo_case() -> dict[str, Any]:
 
 
 def seal_evidence(event: dict[str, Any]) -> dict[str, Any]:
+    """Seal one well-formed event with a stable identity."""
+    if not isinstance(event, dict):
+        raise ValueError("Evidence event must be an object.")
+    event_id = event.get("event_id")
+    if not isinstance(event_id, str) or not event_id.strip():
+        raise ValueError("Evidence event must include a non-empty event_id.")
     record = deepcopy(event)
     return {
         "evidence_id": record["event_id"],
@@ -71,16 +77,22 @@ def seal_evidence(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def verify_evidence(item: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(item, dict):
+        return {
+            "evidence_id": "unknown",
+            "expected_sha256": "",
+            "actual_sha256": "",
+            "valid": False,
+            "status": "HASH MISMATCH — POSSIBLE TAMPERING",
+        }
     record = item.get("record", {})
     try:
         actual = sha256_record(record)
-    except (TypeError, ValueError, RecursionError):
+    except (TypeError, ValueError, RecursionError, UnicodeError, OverflowError):
         actual = ""
     expected = str(item.get("sha256", ""))
     evidence_id = item.get("evidence_id", "unknown")
-    # The envelope ID is used to join findings and timeline entries. Bind it
-    # to the hashed record's event_id so an attacker cannot swap the displayed
-    # reference while keeping an otherwise valid record hash.
+    # Bind the envelope ID to the hashed record so references cannot be swapped.
     record_id = record.get("event_id") if isinstance(record, dict) else None
     id_matches = bool(record_id) and evidence_id == record_id
     valid = bool(expected) and bool(actual) and actual == expected and id_matches
@@ -118,39 +130,65 @@ def make_audit_entry(action: str, actor: str, payload: dict[str, Any], previous_
 
 
 def verify_audit_chain(entries: list[dict[str, Any]]) -> bool:
+    """Return False for malformed or non-canonicalizable audit data."""
+    if not isinstance(entries, list):
+        return False
     previous = "GENESIS"
     for entry in entries:
         if not isinstance(entry, dict) or entry.get("previous_hash") != previous:
             return False
         without_hash = {key: value for key, value in entry.items() if key != "entry_hash"}
-        if sha256_record(without_hash) != entry.get("entry_hash"):
+        try:
+            actual_hash = sha256_record(without_hash)
+        except (TypeError, ValueError, RecursionError, UnicodeError, OverflowError):
             return False
-        previous = entry["entry_hash"]
+        entry_hash = entry.get("entry_hash")
+        if not isinstance(entry_hash, str) or actual_hash != entry_hash:
+            return False
+        previous = entry_hash
     return True
 
 
 def append_audit(entries: list[dict[str, Any]], action: str, actor: str, payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """Append only to a valid audit chain; never silently extend corrupted history."""
+    if not isinstance(entries, list):
+        raise ValueError("Audit entries must be a list.")
+    if not verify_audit_chain(entries):
+        raise ValueError("Cannot append to an invalid audit chain.")
+    if not isinstance(action, str) or not action.strip():
+        raise ValueError("Audit action must be a non-empty string.")
+    if not isinstance(actor, str) or not actor.strip():
+        raise ValueError("Audit actor must be a non-empty string.")
+    if not isinstance(payload, dict):
+        raise ValueError("Audit payload must be an object.")
     previous = entries[-1]["entry_hash"] if entries else "GENESIS"
-    return entries + [make_audit_entry(action, actor, payload, previous)]
+    try:
+        entry = make_audit_entry(action, actor, payload, previous)
+    except (TypeError, ValueError, RecursionError, UnicodeError, OverflowError) as exc:
+        raise ValueError("Audit payload cannot be canonically serialized.") from exc
+    return entries + [entry]
 
 
 def investigate_case(case: dict[str, Any], evidence: list[dict[str, Any]]) -> dict[str, Any]:
     """Deterministic agent workflow; every finding cites evidence IDs."""
+    if not isinstance(case, dict):
+        raise ValueError("Case must be an object.")
+    case_id = case.get("case_id")
+    if not isinstance(case_id, str) or not case_id.strip():
+        raise ValueError("Case must include a non-empty case_id.")
+    if not isinstance(evidence, list):
+        raise ValueError("Evidence must be a list.")
     evidence = [item for item in evidence if isinstance(item, dict)]
-    by_id = {
-        str(item.get("evidence_id")): item
-        for item in evidence
-        if item.get("evidence_id") is not None
-    }
     valid_ids = [
         str(item.get("evidence_id"))
         for item in evidence
         if item.get("evidence_id") is not None and verify_evidence(item)["valid"]
     ]
+    valid_id_set = set(valid_ids)
     findings = []
 
     def finding(fid: str, title: str, explanation: str, severity: str, refs: list[str], confidence: str) -> None:
-        valid_refs = [ref for ref in refs if ref in valid_ids]
+        valid_refs = list(dict.fromkeys(ref for ref in refs if ref in valid_id_set))
         findings.append({
             "finding_id": fid,
             "title": title,
@@ -184,7 +222,7 @@ def investigate_case(case: dict[str, Any], evidence: list[dict[str, Any]]) -> di
     timeline.sort(key=lambda event: _timeline_sort_key(event["timestamp"]))
 
     return {
-        "case_id": case["case_id"],
+        "case_id": case_id,
         "orchestrator": {"status": "completed", "strategy": "Preserve → detect → correlate → verify → propose response"},
         "agents": [
             {"name": "Evidence Agent", "status": "completed", "summary": f"Reviewed {len(evidence)} evidence records; {len(valid_ids)} passed integrity verification."},
@@ -209,14 +247,29 @@ def investigate_case(case: dict[str, Any], evidence: list[dict[str, Any]]) -> di
 
 def apply_simulated_response(proposals: list[dict[str, Any]], action_id: str, approved: bool, approver: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Enforce explicit approval and simulate, never execute real response actions."""
+    if not isinstance(proposals, list):
+        raise ValueError("Response proposals must be a list.")
     updated = deepcopy(proposals)
-    target = next((item for item in updated if item["action_id"] == action_id), None)
+    target = next(
+        (item for item in updated if isinstance(item, dict) and item.get("action_id") == action_id),
+        None,
+    )
     if target is None:
         raise ValueError("Unknown response action.")
-    # Require the actual boolean True. Truthy strings/integers from untrusted
-    # callers must never cross the simulated approval gate.
+    safe_approver = str(approver or "unknown")[:128]
     if approved is not True:
         target["status"] = "rejected"
-        return updated, {"action_id": action_id, "status": "rejected", "approver": approver, "simulated": True}
+        return updated, {
+            "action_id": action_id,
+            "status": "rejected",
+            "approver": safe_approver,
+            "simulated": True,
+        }
     target["status"] = "approved_simulated"
-    return updated, {"action_id": action_id, "status": "simulated_success", "approver": approver, "simulated": True, "message": "No real host, account, network or process was changed."}
+    return updated, {
+        "action_id": action_id,
+        "status": "simulated_success",
+        "approver": safe_approver,
+        "simulated": True,
+        "message": "No real host, account, network or process was changed.",
+    }

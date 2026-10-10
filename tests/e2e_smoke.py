@@ -51,7 +51,12 @@ def assert_no_overlap(page, selector, name):
 
 
 def choose_workspace(page, steps_down):
-    """Select a FIRSTLIGHT workspace using keyboard input to avoid flaky popover clicks."""
+    """Select a FIRSTLIGHT workspace with keyboard input.
+
+    Streamlit's React-ARIA option popover can detach during a rerun before a
+    Playwright pointer click completes. Keyboard navigation avoids that flaky
+    DOM race while keeping the test on the real user interaction path.
+    """
     workspace = page.get_by_role("combobox", name="Investigation workspace")
     workspace.click()
     for _ in range(steps_down):
@@ -115,7 +120,9 @@ def main():
 
                 # FIRSTLIGHT is the flagship workspace; exercise its main
                 # synthetic-only investigation path without provider credentials.
-                page.get_by_role("button", name="Open FIRSTLIGHT →").click()
+                page.locator(".st-key-home-actions").get_by_role(
+                    "button", name="Open FIRSTLIGHT →"
+                ).last.click()
                 page.get_by_role("button", name="Load / reset synthetic incident").click()
                 page.get_by_text("Synthetic case loaded").wait_for(timeout=30_000)
                 choose_workspace(page, 2)
@@ -133,6 +140,8 @@ def main():
 
                 # Approval remains explicitly simulated; verify the action log
                 # and audit trail after one approval.
+                # Workspace selection always starts at Incident (index 0), so
+                # use absolute option indexes rather than offsets from the old state.
                 choose_workspace(page, 1)
                 page.get_by_role("button", name="Approve & simulate").first.click()
                 page.get_by_text("Response action log").wait_for(timeout=30_000)
