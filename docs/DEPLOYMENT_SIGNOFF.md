@@ -1,90 +1,77 @@
 # Deployment verification and release sign-off
 
-This is an execution record, not a declaration that the checks have passed. A checkbox may be marked complete only by the person who ran the test against the stated candidate and captured its result. Repository CI does not prove the hosted app is running that commit.
+This is an execution record. A missing result is unknown, not a pass. Repository CI does not prove that the hosted application is running the merged commit.
 
 ## Candidate identity
 
-Record these values for each release:
+- Canonical repository: `kaustubhdua/Satark`
+- Candidate branch: `main`
+- Approved merge commit: `edfb72c7f5b8654ef4ed76de4a632c59438e220e`
+- UI change PR: [#25](https://github.com/kaustubhdua/Satark/pull/25) (merged; merge commit `edfb72c7f5b8654ef4ed76de4a632c59438e220e`)
+- Deployment repository inspected read-only: [harshilgupta926/Satark](https://github.com/harshilgupta926/Satark) — older home/FIRSTLIGHT labels remain on its `main` branch
+- CI run on exact PR head `ed44973b458916cd7a9d61cd8b719d65c90f722e`: [run #842](https://github.com/kaustubhdua/Satark/actions/runs/38095332214) — PASS
+- CodeQL run on exact PR head `ed44973b458916cd7a9d61cd8b719d65c90f722e`: [run #311](https://github.com/kaustubhdua/Satark/actions/runs/38095332252) — PASS
+- Public demo URL: https://satark-32uppvjxwmderrchbhj7gj.streamlit.app/
+- Hosting dashboard repository / branch / deployed SHA: NOT VERIFIED (dashboard access/revision evidence unavailable)
+- Tester / timestamp: automated repository checks inspected 2026-10-11; live sign-off incomplete
 
-- Candidate repository:
-- Candidate branch:
-- Candidate commit SHA (full 40 characters):
-- Hosting provider and app identifier:
-- Public app URL:
-- Hosting dashboard's deployed commit / build identifier:
-- CI run URL and result:
-- CodeQL run URL and result:
-- Tester, date, and timezone:
+## Automated release-candidate result
 
-**Identity gate:** the hosting dashboard's deployed revision must match the approved candidate SHA. If the host cannot expose a SHA, add a safe build identifier to the app and verify it in the live UI. Never expose environment variables, secret values, or provider credentials as build metadata.
+The exact PR head passed CI and CodeQL before merge. CI included dependency consistency, Python compilation, unit tests, desktop/mobile browser smoke/layout tests, and project/style/asset checks. These results apply to the PR head above; verify the merged commit's own workflow state separately when available.
 
 ## P0 — live demonstration smoke test
 
-Run in a fresh browser session against the public deployment, not only localhost. Save screenshots or logs that do not contain submitted private data.
+Status: **FAIL — deployed UI is stale; NOT SIGNED OFF**. An interactive browser session successfully rendered the public app and opened FIRSTLIGHT, but its visible home still contains `SAMPLE`, `ILLUSTRATIVE`, `FLAGSHIP WORKSPACE 01 / 03`, and `Open guided sample report`. FIRSTLIGHT still exposes `Load / reset synthetic incident`. These labels predate PR #25, so the public deployment is not serving the approved UI content. The app is created by `harshilgupta926`; the canonical repo `kaustubhdua/Satark` is a different repository. GitHub integration access to the deployment repository is read-only (branch creation returned 403), and the hosting dashboard revision is not accessible. The live app's home and FIRSTLIGHT entry render, but that does not satisfy the revision identity gate.
 
-| Check | Pass condition | Result / evidence |
+| Check | Result | Evidence / notes |
 |---|---|---|
-| App startup | Home renders without traceback or blank screen | |
-| FIRSTLIGHT entry | Workspace opens and synthetic scenario loads without provider credentials | |
-| Evidence verification | Original evidence verifies; tampering challenge is detected | |
-| Investigation | Findings link back to evidence; unknowns/gaps remain visible | |
-| Simulated response | Approval/rejection is explicit; every outcome remains clearly simulated; no real action occurs | |
-| Audit integrity | Valid chain verifies; modified/malformed chain fails verification | |
-| JSON export | Export downloads and parses; no secret or unrelated session content included | |
-| Text scanner | Valid sample produces a bounded result; provider failure is not described as safe | |
-| URL scanner | Public test URL works where permitted; private/reserved targets and blocked redirects are rejected | |
-| Image / QR scanner | Valid sample and invalid image both produce bounded outcomes | |
-| PDF scanner / report | Valid sample is processed within limits; report downloads and opens | |
-| Video scanner | Supported sample works when dependencies are available; unsupported/oversized input fails gracefully | |
-| History | Current-session behavior is clear; refresh/restart persistence is not implied | |
-| Responsive layout | Navigation, actions, errors and downloads work on desktop and mobile viewport | |
-| Offline behavior | With provider key absent, deterministic FIRSTLIGHT and sample/demo paths remain usable | |
-| Secret hygiene | Browser-visible UI, URLs, logs and errors contain no API key, auth header or raw provider payload | |
+| Hosting repository and branch | PARTIAL | Live shell identifies app creator as `harshilgupta926`; read-only inspection of `harshilgupta926/Satark` shows the older UI copy. Exact host branch still requires dashboard confirmation |
+| Deployed revision equals approved SHA | BLOCKED | No dashboard build SHA or in-app build identifier |
+| Home renders without runtime error | PASS (basic render only) | Interactive browser shows the home UI and navigation; no visible runtime error. This does not verify the deployed revision |
+| FIRSTLIGHT entry / training case | PARTIAL | FIRSTLIGHT opens and the existing synthetic incident is visible; deployed button label is the old `Load / reset synthetic incident`, confirming stale UI |
+| Evidence integrity and tampering | NOT RUN | Needs live interaction |
+| Findings, timeline, gaps | NOT RUN | Needs live interaction |
+| Simulated approval and rejection | NOT RUN | Needs live interaction |
+| Audit-chain validation | NOT RUN | Needs live interaction |
+| FIRSTLIGHT JSON export | NOT RUN | Needs live interaction |
+| Scanner workflows and graceful provider failure | NOT RUN | Authorized provider credentials and controlled test inputs needed |
+| URL SSRF / redirect protections | NOT RUN | Must use controlled test endpoints |
+| PDF export opens and contains expected sections | NOT RUN | Needs live browser download |
+| Video / image / QR scanner edge cases | NOT RUN | Needs controlled sample corpus |
+| Desktop/mobile live layout | NOT RUN | Live browser blocked |
+| Secret hygiene | PARTIAL / NOT VERIFIED | Repository config reviewed; live logs and browser errors not inspectable |
+| Hosting-level body/time/concurrency/egress limits | NOT VERIFIED | Requires hosting configuration access |
 
-A check is **blocked**, not passed, if the required sample, credentials, dashboard access, or evidence is unavailable.
+## P1 — provider and security validation
 
-## P0 — adversarial and failure tests
+Status: **BLOCKED pending authorized target-environment testing**.
 
-Run only in a controlled test environment with synthetic inputs and bounded resource limits.
+- Model IDs are configured in `ai_provider.py`; availability to the target API account has not been verified.
+- No live provider success/failure test was run in this pass. Do not infer provider health from unit tests.
+- No production-host adversarial file/URL or concurrency tests were run.
+- Provider data-processing/retention terms and the intended data's privacy/legal basis still require owner review.
+- Continue to use synthetic or non-sensitive data until these gates are closed.
 
-| Area | Test cases | Required result |
-|---|---|---|
-| File parser safety | Empty, truncated, malformed, encrypted and oversized PDF; malformed/oversized image; extreme pixel dimensions; empty/oversized video | Clear rejection or bounded fallback; no traceback or runaway memory/CPU |
-| URL / SSRF | localhost, private/reserved IP, IPv4-mapped IPv6, mixed public/private DNS answers, DNS changes, credentials in URL, redirect to private IP, redirect loop, HTTPS downgrade | Rejected before sensitive/internal access; redirect targets revalidated; request and redirect budgets enforced |
-| Provider failures | Success, vision request, timeout, invalid/revoked key, model missing, malformed response, provider 429/5xx | Bounded user-facing error; no false-safe verdict; no secret/raw response leakage |
-| Abuse controls | Rapid repeated scans, parallel requests, oversized request body, slow provider, simultaneous large files | Explicit request/concurrency/time limits and bounded resource use |
-| Data leakage | Deliberate fake API key marker and synthetic sensitive string through input/error paths | Marker does not appear in logs, reports, browser output or exceptions except where intentionally echoed as submitted content |
-| Recovery | Restart app, provider outage, invalid configuration | No misleading durability claim; deterministic demo remains available; rollback path documented |
+## P1 — investigation quality
 
-Do not run load tests against the public shared demo or third-party providers without authorization. Record request counts, concurrency, durations and observed resource usage. Application-level limits must be complemented by host-level request size, timeout, concurrency, egress and provider spend limits.
+Repository unit tests cover evidence hash mismatches, ID substitution, malformed evidence, evidence references, timeline ordering across timezones, malformed audit chains, simulated approval/rejection, and bounded imports. These are automated code-level checks, not a complete live or operational evaluation. A repeatable evaluation dataset and measured precision/recall, false-positive rate, grounding rate and latency remain open.
 
-## P1 — architecture required before sensitive or multi-tenant use
+## P2 — broader-use architecture
 
-- [ ] Authentication and explicit authorization for every case/report operation.
-- [ ] Tenant isolation enforced server-side and covered by negative tests.
-- [ ] Durable case/evidence storage with access controls, integrity verification and independent evidence-manifest anchoring where chain-of-custody claims are made.
-- [ ] Documented retention, deletion, export and backup/restore procedures; recovery exercise completed.
-- [ ] Distributed rate limits, per-user and global quotas, concurrency limits and provider cost alerts.
-- [ ] Provider data-processing, retention, region and training-use terms reviewed and approved for the intended data.
-- [ ] Privacy notice, acceptable-use policy, security contact, incident owner and incident-response playbook.
-- [ ] Structured monitoring for errors, latency, limits and resource saturation without logging raw submitted content or secrets.
-- [ ] Rollback procedure exercised and dependency/security update owner assigned.
-- [ ] FIRSTLIGHT simulated response boundaries reviewed in UI, report, docs and demo script.
-- [ ] Evaluation dataset and measured precision/recall/false-positive rate, evidence-grounding rate and latency published with limitations.
+Not a production approval. Before confidential or multi-tenant use, complete authenticated access and authorization, tenant isolation, durable case/evidence storage, protected/independently verifiable audit records, retention/deletion and backup/recovery, distributed quotas and cost controls, monitoring, incident ownership, and a measured evaluation program.
 
-## Go / no-go rule
+## Go / no-go
 
-- **GO — supervised hackathon demo:** only synthetic/non-sensitive inputs; exact deployed SHA verified; all applicable P0 live smoke checks pass; no known critical/high unresolved release-blocking finding; provider failures and simulated actions behave safely.
-- **NO-GO — public service with a shared key:** until host-level abuse controls, global quotas and monitoring are verified.
-- **NO-GO — confidential or regulated data:** until the P1 identity, tenant isolation, persistence, retention, provider and recovery controls are reviewed and tested.
-- A missing result is **unknown**, not a pass. CI green, a successful local run, or a repository sync alone cannot change that status.
+- **Supervised hackathon demo:** NO-GO for a verified release sign-off until the hosting revision is matched to the approved commit and applicable live P0 checks are run.
+- **Public anonymous service with a shared provider key:** NO-GO until host-level abuse controls, global quotas and monitoring are verified.
+- **Confidential / regulated data:** NO-GO until P1 identity, tenant isolation, persistence, retention, provider and recovery controls are implemented and reviewed.
 
 ## Sign-off
 
-- Final status: NOT RUN / BLOCKED / PASS / FAIL
-- Candidate SHA:
-- Failed or blocked checks:
-- Accepted residual risks and owner:
-- Rollback tested:
-- Reviewer:
-- Date/time:
+- Final status: **FAIL / BLOCKED — automated PR checks passed, but the live deployment demonstrably serves older UI content and the approved SHA cannot be deployed from this connection**
+- Candidate SHA: `edfb72c7f5b8654ef4ed76de4a632c59438e220e`
+- Outstanding blockers: update deployment repo/host to the approved commit, verify exact deployed SHA, complete remaining live interactive workflows, authorized provider and adversarial tests, host controls/privacy review. GitHub write access to `harshilgupta926/Satark` is unavailable to this integration.
+- Accepted residual risks / owner: not yet assigned
+- Rollback tested: NO / NOT VERIFIED
+- Reviewer: automated repository review; human deployment owner sign-off pending
+- Date: 2026-10-11
