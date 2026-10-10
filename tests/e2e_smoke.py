@@ -59,6 +59,9 @@ def choose_workspace(page, steps_down):
     """
     workspace = page.get_by_role("combobox", name="Investigation workspace")
     workspace.click()
+    # Reset to the first option before moving so this remains deterministic
+    # even if Streamlit preserves a previous selectbox value across reruns.
+    workspace.press("Home")
     for _ in range(steps_down):
         workspace.press("ArrowDown")
     workspace.press("Enter")
@@ -126,6 +129,7 @@ def main():
                 page.get_by_role("button", name="Load / reset synthetic incident").click()
                 page.get_by_text("Synthetic case loaded").wait_for(timeout=30_000)
                 choose_workspace(page, 2)
+                page.get_by_text("Coordinated investigation", exact=True).wait_for(timeout=30_000)
                 page.get_by_role("button", name="Run investigation workflow").click()
                 page.get_by_text("Coordinated investigation").wait_for(timeout=30_000)
                 page.get_by_text("Findings", exact=True).wait_for(timeout=30_000)
@@ -140,12 +144,13 @@ def main():
 
                 # Approval remains explicitly simulated; verify the action log
                 # and audit trail after one approval.
-                # Workspace selection always starts at Incident (index 0), so
-                # use absolute option indexes rather than offsets from the old state.
-                choose_workspace(page, 1)
+                # choose_workspace resets to Incident (index 0), so select the
+                # exact destination by absolute option index: Response Center=3,
+                # Audit Trail=4. Evidence Integrity (index 1) has no response button.
+                choose_workspace(page, 3)
                 page.get_by_role("button", name="Approve & simulate").first.click()
                 page.get_by_text("Response action log").wait_for(timeout=30_000)
-                choose_workspace(page, 1)
+                choose_workspace(page, 4)
                 page.get_by_text("Hash-chained audit trail").wait_for(timeout=30_000)
                 page.get_by_text("Audit chain verifies against its first entry.").wait_for(timeout=30_000)
                 page.locator('[data-testid="stSidebar"] button').filter(has_text="Overview").click()

@@ -61,5 +61,39 @@ class InputProcessingTests(unittest.TestCase):
         self.assertTrue(value.startswith("data:image/jpeg;base64,"))
 
 
+    def test_decompression_bomb_is_rejected_with_bounded_error(self):
+        upload = BytesIO(b"image")
+        upload.name = "bomb.png"
+        with patch("input_processing.Image.open", side_effect=Image.DecompressionBombError("too many pixels")):
+            with self.assertRaisesRegex(ValueError, "too large to process safely"):
+                image_to_data_url(upload)
+
+    def test_corrupt_pdf_is_normalized_to_user_safe_error(self):
+        upload = BytesIO(b"not a pdf")
+        upload.name = "broken.pdf"
+        with patch("input_processing.PdfReader", side_effect=RuntimeError("internal parser detail")):
+            with self.assertRaisesRegex(ValueError, "could not read this PDF") as caught:
+                extract_pdf_text(upload)
+        self.assertNotIn("internal parser detail", str(caught.exception))
+
+    def test_pdf_with_no_extractable_text_fails_closed(self):
+        class EmptyPage:
+            def extract_text(self):
+                return ""
+
+        class EmptyReader:
+            pages = [EmptyPage()]
+
+        upload = BytesIO(b"%PDF-1.7")
+        with patch("input_processing.PdfReader", return_value=EmptyReader()):
+            with self.assertRaisesRegex(ValueError, "No readable text"):
+                extract_pdf_text(upload)
+
+    def test_upload_size_falls_back_to_file_like_length(self):
+        from input_processing import _uploaded_size
+        upload = BytesIO(b"12345")
+        self.assertEqual(_uploaded_size(upload), 5)
+
+
 if __name__ == "__main__":
     unittest.main()

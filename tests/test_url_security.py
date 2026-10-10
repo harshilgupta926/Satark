@@ -182,6 +182,45 @@ class URLSecurityTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "insecure HTTPS-to-HTTP"):
                 fetch_url_text("https://example.com/")
 
+    def test_ipv4_mapped_ipv6_private_destination_is_rejected(self):
+        answer = [(None, None, None, None, ("::ffff:127.0.0.1", 443, 0, 0))]
+        with patch("url_security.socket.getaddrinfo", return_value=answer):
+            self.assertFalse(is_public_url("https://example.com/"))
+
+    def test_ipv6_loopback_and_link_local_destinations_are_rejected(self):
+        for address in ("::1", "fe80::1", "fc00::1"):
+            with self.subTest(address=address):
+                answer = [(None, None, None, None, (address, 443, 0, 0))]
+                with patch("url_security.socket.getaddrinfo", return_value=answer):
+                    self.assertFalse(is_public_url("https://example.com/"))
+
+    def test_malformed_bracketed_ipv6_url_fails_closed(self):
+        for url in ("https://[::1", "https://example.com:bad/", "https://example.com:99999/"):
+            with self.subTest(url=url):
+                self.assertFalse(is_public_url(url))
+
+    def test_redirect_to_private_destination_is_revalidated_and_blocked(self):
+        response = fake_response(
+            headers={"Content-Type": "text/html", "Location": "https://127.0.0.1/admin"},
+            status=302,
+        )
+        connection = fake_connection()
+        with patch(
+            "url_security._validated_destination",
+            side_effect=[
+                (urlparse("https://example.com/start"), ["93.184.216.34"]),
+                ValueError("The URL points to a private or unsafe network address."),
+            ],
+        ) as validate, patch(
+            "url_security._open_pinned_request", return_value=(connection, response)
+        ) as open_request:
+            with self.assertRaisesRegex(ValueError, "private or unsafe"):
+                fetch_url_text("https://example.com/start")
+        self.assertEqual(validate.call_count, 2)
+        open_request.assert_called_once()
+        response.close.assert_called_once()
+        connection.close.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()
