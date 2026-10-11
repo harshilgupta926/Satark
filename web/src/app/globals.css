@@ -155,3 +155,73 @@ input[type=file]::file-selector-button{cursor:pointer}
  .loader-track span{width:100%;opacity:.75}
  .workspace-card,.tool-card,.workspace-icon,.btn,.evidence{transition:none!important;will-change:auto}
 }
+
+
+/* Ambient Sentinel atmosphere inspired by React Bits' restrained background work.
+   CSS-only so it stays fast, responsive and dependency-light. */
+body{position:relative;isolation:isolate;background:var(--bg)}
+body:before{z-index:0!important;opacity:.22!important;pointer-events:none}
+body>.ambient-backdrop{
+  position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 0%,#193c4a18,transparent 55%);
+}
+.ambient-backdrop:before{
+  content:"";position:absolute;inset:0;opacity:.23;
+  background-image:radial-gradient(#a5d3d51a .7px,transparent .7px);
+  background-size:22px 22px;
+  mask-image:radial-gradient(ellipse at 50% 20%,#000 0%,transparent 75%);
+}
+.ambient-backdrop:after{
+  content:"";position:absolute;inset:-35%;
+  background:conic-gradient(from 180deg at 50% 50%,transparent 0deg,#76e3d207 55deg,transparent 120deg,#c6f27a06 205deg,transparent 270deg);
+  filter:blur(35px);animation:ambient-drift 32s linear infinite;
+}
+.ambient-backdrop i{
+  position:absolute;display:block;width:min(48vw,620px);aspect-ratio:1;border-radius:50%;
+  filter:blur(80px);opacity:.12;will-change:transform;
+}
+.ambient-backdrop i:nth-child(1){top:-28%;right:-14%;background:#357b9b;animation:orb-drift-one 24s ease-in-out infinite alternate}
+.ambient-backdrop i:nth-child(2){top:28%;left:-25%;width:min(40vw,480px);background:#267d72;opacity:.09;animation:orb-drift-two 29s ease-in-out infinite alternate}
+.ambient-backdrop i:nth-child(3){bottom:-42%;right:16%;width:min(35vw,400px);background:#8ea94b;opacity:.06;animation:orb-drift-three 35s ease-in-out infinite alternate}
+.shell{position:relative;z-index:1}
+.topbar{background:linear-gradient(180deg,#080e15f2,#080e15d9)}
+.container{position:relative}
+.route-veil{
+  position:fixed;inset:0;z-index:1000;display:grid;place-items:center;
+  background:#080e15d9;backdrop-filter:blur(14px) saturate(.85);
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .22s var(--ease-out),visibility .22s;
+}
+.route-veil-visible{opacity:1;visibility:visible}
+.route-veil-card{
+  display:flex;align-items:center;flex-direction:column;gap:15px;
+  min-width:190px;padding:26px 30px;border:1px solid #91b7c52a;border-radius:19px;
+  background:linear-gradient(145deg,#142430ed,#0b141deb);
+  box-shadow:0 24px 90px #0006,0 0 60px #76e3d20b;
+  animation:route-card-in .25s var(--ease-out) both;
+}
+.route-veil-mark{
+  display:grid;place-items:center;width:49px;height:49px;border-radius:15px;
+  border:1px solid #76e3d24d;background:linear-gradient(145deg,#1c3540,#101d27);
+  color:var(--text);font-size:23px;font-weight:800;letter-spacing:-.09em;
+  box-shadow:0 0 0 6px #76e3d208,0 0 32px #76e3d214;
+  animation:loader-mark-breathe 2.8s ease-in-out infinite
+}
+.route-veil-mark span{color:var(--lime)}
+.route-veil-label{font-size:9px;font-weight:750;letter-spacing:.2em;color:#a7bdc9}
+.route-veil-track{width:142px;height:2px;overflow:hidden;border-radius:99px;background:#9ab8c51c}
+.route-veil-track i{display:block;width:36%;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--cyan),var(--lime));animation:loader-progress 1.35s var(--ease-out) infinite}
+@keyframes ambient-drift{to{transform:rotate(360deg)}}
+@keyframes orb-drift-one{to{transform:translate(-9vw,12vh) scale(1.12)}}
+@keyframes orb-drift-two{to{transform:translate(11vw,-8vh) scale(.92)}}
+@keyframes orb-drift-three{to{transform:translate(-6vw,-10vh) scale(1.14)}}
+@keyframes route-card-in{from{transform:translateY(7px) scale(.985);opacity:.4}to{transform:translateY(0) scale(1);opacity:1}}
+@media(max-width:700px){
+ .ambient-backdrop i{filter:blur(58px);opacity:.07}
+ .route-veil-card{padding:23px 26px}
+}
+@media(prefers-reduced-motion:reduce){
+ .ambient-backdrop:after,.ambient-backdrop i,.route-veil-mark,.route-veil-track i{animation:none!important}
+ .route-veil{backdrop-filter:none;transition:none}
+ .route-veil-card{animation:none}
+}
