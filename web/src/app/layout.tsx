@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import RouteExperience from './route-experience';
 
 export const metadata: Metadata = {
   title: 'SATARK — Digital Security Workspace',
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}</body></html>;
+  return <html lang="en"><body><div className="ambient-backdrop" aria-hidden="true"><i /><i /><i /></div><RouteExperience />{children}</body></html>;
 }
