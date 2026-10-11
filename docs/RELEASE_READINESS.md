@@ -50,3 +50,38 @@ This document separates a working hackathon demonstration from a service that is
 - Decision / reviewer / date:
 
 A missing answer is an unresolved item, not an implicit pass.
+
+## External release research — checked 2026-10-11
+
+This section records official-source findings relevant to the outstanding deployment gates. It does not replace target-environment testing.
+
+### Streamlit Community Cloud deployment ownership
+
+- The deployment configuration explicitly selects a GitHub repository, branch, and entrypoint; the app's URL alone does not prove which revision is running.
+- Streamlit documents that app logs are available only to users with write access to the associated repository, and that only repository administrators can deploy/delete apps. The person who owns/administers the deployment repository must therefore perform the final sync and inspect the build/logs if this project connection is read-only.
+- Official references: [Deploy an app](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/deploy), [Trust and security](https://docs.streamlit.io/deploy/streamlit-community-cloud/get-started/trust-and-security), [Connect GitHub](https://docs.streamlit.io/deploy/streamlit-community-cloud/get-started/connect-your-github-account).
+
+### Groq data-handling nuance
+
+- Groq states that inference customer inputs/outputs are not retained by default, but usage metadata is retained. It may temporarily retain inputs/outputs for reliability troubleshooting or abuse investigation for up to 30 days unless the organization enables Zero Data Retention or a longer legal requirement applies.
+- Features that depend on storage, such as batch processing and fine-tuning, have separate retention behavior. The project should review the exact endpoints/features used and the account's Data Controls settings before allowing sensitive evidence.
+- This is provider documentation, not a project-specific contractual/legal determination. Use synthetic or public non-sensitive content until the owner approves the applicable terms and settings.
+- Official reference: [Groq — Your Data in GroqCloud](https://console.groq.com/docs/your-data).
+
+### URL retrieval / SSRF
+
+- The current `url_security.py` implements several useful controls: HTTP(S)-only parsing, rejection of URL credentials, resolution checks against non-global/reserved addresses, IP-pinned connections, TLS hostname verification, redirect revalidation, HTTPS-to-HTTP downgrade rejection, accepted content-type restrictions, response byte limits, and timeouts.
+- Existing tests cover mixed public/private DNS answers, private redirect destinations, DNS failures, IPv4-mapped IPv6, non-unicast addresses, and redirect limits. These are meaningful unit-level protections but do not prove the hosted network boundary is safe.
+- OWASP recommends disabling automatic redirect following or revalidating each redirect, and recommends allowlists where feasible. SATARK manually follows redirects and revalidates them; hosting-level egress restrictions remain a separate defense-in-depth requirement.
+- Official reference: [OWASP SSRF Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html).
+
+### Remaining closure criteria
+
+1. Deployment owner updates the actual configured deployment repository/branch to the approved candidate, then records the resulting deployed SHA from the host/build evidence.
+2. Run CI and CodeQL against the exact final candidate SHA; the previously documented green results apply to the earlier PR head, not automatically to later commits.
+3. Complete live, provider-free smoke tests and exports first; then use an authorized dedicated test key to exercise provider success, timeout, invalid key, unavailable model and rate-limit paths.
+4. Run controlled upload/URL abuse cases and verify bounded failure behavior; do not test against internal or third-party systems without authorization.
+5. Verify host-level body/time/concurrency/egress controls and inspect logs for accidental key or submitted-content exposure.
+6. Make a human go/no-go decision and assign an owner for rollback, incident handling and privacy questions.
+
+**Current decision remains NO-GO for a verified release** until the deployed revision is identified and the applicable live gates pass.

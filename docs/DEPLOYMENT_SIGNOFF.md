@@ -21,14 +21,14 @@ The exact PR head passed CI and CodeQL before merge. CI included dependency cons
 
 ## P0 — live demonstration smoke test
 
-Status: **FAIL — deployed UI is stale; NOT SIGNED OFF**. An interactive browser session successfully rendered the public app and opened FIRSTLIGHT, but its visible home still contains `SAMPLE`, `ILLUSTRATIVE`, `FLAGSHIP WORKSPACE 01 / 03`, and `Open guided sample report`. FIRSTLIGHT still exposes `Load / reset synthetic incident`. These labels predate PR #25, so the public deployment is not serving the approved UI content. The app is created by `harshilgupta926`; the canonical repo `kaustubhdua/Satark` is a different repository. GitHub integration access to the deployment repository is read-only (branch creation returned 403), and the hosting dashboard revision is not accessible. The live app's home and FIRSTLIGHT entry render, but that does not satisfy the revision identity gate.
+Status: **PARTIAL PASS — current public UI matches the product-style copy; NOT SIGNED OFF**. A fresh interactive browser session on 2026-10-11 rendered the home heading `Pause the panic. Find the signal.`, showed the primary actions `Open FIRSTLIGHT →`, `Start an investigation →`, and `View example report`, opened FIRSTLIGHT, and observed `Open / reset training case`. Read-only inspection of `harshilgupta926/Satark` also confirms the current `ui/home.py` and `ui/firstlight.py` contain these updated labels. This resolves the earlier stale-copy observation, but it does **not** identify the host's configured branch or deployed commit SHA, and it does not complete the full live workflow suite. The app is created by `harshilgupta926`; the canonical repo `kaustubhdua/Satark` is a different repository. GitHub integration access to the deployment repository is read-only (branch creation returned 403), and the hosting dashboard revision is not accessible.
 
 | Check | Result | Evidence / notes |
 |---|---|---|
-| Hosting repository and branch | PARTIAL | Live shell identifies app creator as `harshilgupta926`; read-only inspection of `harshilgupta926/Satark` shows the older UI copy. Exact host branch still requires dashboard confirmation |
+| Hosting repository and branch | PARTIAL | Live shell identifies app creator as `harshilgupta926`; deployment repo's current home/FIRSTLIGHT copy matches the fresh live observation. Exact host branch still requires dashboard confirmation |
 | Deployed revision equals approved SHA | BLOCKED | No dashboard build SHA or in-app build identifier |
-| Home renders without runtime error | PASS (basic render only) | Interactive browser shows the home UI and navigation; no visible runtime error. This does not verify the deployed revision |
-| FIRSTLIGHT entry / training case | PARTIAL | FIRSTLIGHT opens and the existing synthetic incident is visible; deployed button label is the old `Load / reset synthetic incident`, confirming stale UI |
+| Home renders without runtime error | PASS (basic render only) | Fresh interactive browser shows current home UI and navigation; no visible runtime error. This does not verify the deployed revision |
+| FIRSTLIGHT entry / training case | PARTIAL | FIRSTLIGHT opens and `Open / reset training case` is visible. The case was not loaded in this pass; deeper workflow/export tests remain outstanding |
 | Evidence integrity and tampering | NOT RUN | Needs live interaction |
 | Findings, timeline, gaps | NOT RUN | Needs live interaction |
 | Simulated approval and rejection | NOT RUN | Needs live interaction |
@@ -68,9 +68,9 @@ Not a production approval. Before confidential or multi-tenant use, complete aut
 
 ## Sign-off
 
-- Final status: **FAIL / BLOCKED — automated PR checks passed, but the live deployment demonstrably serves older UI content and the approved SHA cannot be deployed from this connection**
+- Final status: **BLOCKED — current live UI copy matches the updated product design, but deployed SHA identity and full live smoke remain unverified; deployment write access is unavailable from this connection**
 - Candidate SHA: `edfb72c7f5b8654ef4ed76de4a632c59438e220e`
-- Outstanding blockers: update deployment repo/host to the approved commit, verify exact deployed SHA, complete remaining live interactive workflows, authorized provider and adversarial tests, host controls/privacy review. GitHub write access to `harshilgupta926/Satark` is unavailable to this integration.
+- Outstanding blockers: verify exact deployed SHA and configured host branch, run full live interactive workflows, perform authorized provider and adversarial tests, and review host controls/privacy. GitHub write access to `harshilgupta926/Satark` is unavailable to this integration.
 - Accepted residual risks / owner: not yet assigned
 - Rollback tested: NO / NOT VERIFIED
 - Reviewer: automated repository review; human deployment owner sign-off pending
