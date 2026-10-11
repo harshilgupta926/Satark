@@ -18,14 +18,40 @@ async function digest(text: string) {
   return Array.from(new Uint8Array(hash)).map(x => x.toString(16).padStart(2, '0')).join('');
 }
 function parseCsv(text: string) {
-  const lines = text.split(/\r?\n/).filter(Boolean);
-  if (lines.length < 2) throw new Error('CSV needs a header and at least one event row.');
-  const headers = lines[0].split(',').map(x => x.trim().toLowerCase());
-  return lines.slice(1, 10001).map((line, index) => {
-    const cols = line.split(',');
+  // RFC-4180-style parser: quoted fields may contain commas, quotes, and newlines.
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (quoted) {
+      if (char === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else quoted = false;
+      } else field += char;
+    } else if (char === '"' && field.length === 0) quoted = true;
+    else if (char === ',') { row.push(field); field = ''; }
+    else if (char === '\n' || char === '\r') {
+      if (char === '\r' && text[i + 1] === '\n') i++;
+      row.push(field); field = '';
+      if (row.some(cell => cell.trim() !== '')) rows.push(row);
+      row = [];
+    } else field += char;
+  }
+  if (quoted) throw new Error('CSV contains an unclosed quoted field.');
+  if (field.length || row.length) { row.push(field); if (row.some(cell => cell.trim() !== '')) rows.push(row); }
+  if (rows.length < 2) throw new Error('CSV needs a header and at least one event row.');
+  const headers = rows[0].map(x => x.trim().toLowerCase());
+  if (!headers.some(h => ['id','timestamp','time','source','kind','summary','message','description','evidence_id'].includes(h))) {
+    throw new Error('CSV header must include event fields such as timestamp, source, kind, or summary.');
+  }
+  const records = rows.slice(1);
+  if (records.length > 10000) throw new Error('Import exceeds 10,000 event records.');
+  return records.map((cols, index) => {
     const row: Record<string,string> = {};
     headers.forEach((header, i) => row[header] = (cols[i] || '').trim());
-    return { id: row.id || 'IMP-' + String(index + 1).padStart(3, '0'), time: row.timestamp || row.time || new Date().toISOString(), source: row.source || 'Imported source', kind: row.kind || 'observation', summary: row.summary || row.message || 'Imported event' };
+    return { id: row.id || 'IMP-' + String(index + 1).padStart(3, '0'), time: row.timestamp || row.time || new Date().toISOString(), source: row.source || 'Imported source', kind: row.kind || 'observation', summary: row.summary || row.message || row.description || 'Imported event' };
   });
 }
 export default function FirstlightPage() {
@@ -75,9 +101,13 @@ export default function FirstlightPage() {
       else throw new Error('Use a JSON or CSV event file.');
       if (!rows.length) throw new Error('No event records found. JSON must be an array or contain an events array.');
       if (rows.length > 10000) throw new Error('Import exceeds 10,000 event records.');
+      if (rows.some(row => !row || typeof row !== 'object' || Array.isArray(row))) throw new Error('Every JSON event must be an object with event fields.');
       const next: Evidence[] = [];
       for (const [i,row] of rows.entries()) {
-        const item = {id:String(row.id || row.evidence_id || 'IMP-'+String(i+1).padStart(3,'0')).slice(0,100),time:String(row.timestamp || row.time || new Date().toISOString()).slice(0,100),source:String(row.source || 'Imported source').slice(0,160),kind:String(row.kind || 'observation').slice(0,100),summary:String(row.summary || row.message || row.description || 'No summary provided').slice(0,4096)};
+        const rawTime = row.timestamp || row.time || new Date().toISOString();
+        const parsedTime = Date.parse(String(rawTime));
+        if (!Number.isFinite(parsedTime)) throw new Error('Invalid timestamp in event ' + (i + 1) + '. Use a valid ISO date/time.');
+        const item = {id:String(row.id || row.evidence_id || 'IMP-'+String(i+1).padStart(3,'0')).slice(0,100),time:new Date(parsedTime).toISOString(),source:String(row.source || 'Imported source').slice(0,160),kind:String(row.kind || 'observation').slice(0,100),summary:String(row.summary || row.message || row.description || 'No summary provided').slice(0,4096)};
         next.push({...item,digest:await digest(JSON.stringify(item))});
       }
       setEvidence(next); setAudit([{time:new Date().toISOString(),action:'ARTIFACT_IMPORTED',detail:file.name+' · '+next.length+' records · SHA-256 calculated locally.'}]); setActions([]); setCaseOpen(true); setImportName(file.name); setSelected('evidence'); setNotice('Imported and hashed locally. Content was not sent to an AI provider.');
