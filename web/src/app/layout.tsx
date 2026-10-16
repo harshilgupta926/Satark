@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import './sentinel-polish.css';
+import './satark-ui-system.css';
 import RouteExperience from './route-experience';
 
 export const metadata: Metadata = {

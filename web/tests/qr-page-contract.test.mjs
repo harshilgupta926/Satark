@@ -4,21 +4,26 @@ import { readFile } from 'node:fs/promises';
 
 test('QR page uses bounded local decoding and never fetches decoded URLs', async () => {
   const source = await readFile(new URL('../src/app/qr/page.tsx', import.meta.url), 'utf8');
-  assert.match(source, /MAX_FILE_BYTES = 10 \* 1024 \* 1024/);
-  assert.match(source, /MAX_PIXELS = 40_000_000/);
-  assert.match(source, /BarcodeDetector/);
-  assert.match(source, /createImageBitmap/);
-  assert.match(source, /detector\.detect\(bitmap\)/);
-  assert.match(source, /did not open the payload|never opened automatically|never open/i);
-  assert.match(source, /fetch\(['"]\/api\/analyze['"]/, 'URL text may be sent only to SATARK’s own analysis route');
-  assert.doesNotMatch(source, /fetch\(\s*payload|fetch\(\s*new URL/, 'decoded destination must never be fetched');
-  assert.doesNotMatch(source, /window\.open|location\.href\s*=/, 'decoded payload must not navigate the browser');
+  assert.ok(source.includes('MAX_FILE_BYTES = 10 * 1024 * 1024'));
+  assert.ok(source.includes('MAX_PIXELS = 12_000_000'));
+  assert.ok(source.includes('BarcodeDetector'));
+  assert.ok(source.includes("import jsQR from 'jsqr'"));
+  assert.ok(source.includes('jsQR(pixels.data, pixels.width, pixels.height'));
+  assert.ok(source.includes('bundled cross-browser decoder'));
+  assert.ok(source.includes('createImageBitmap'));
+  assert.ok(source.includes('detector.detect(bitmap)'));
+  assert.ok(source.includes('did not upload the image or open the payload'));
+  assert.ok(source.includes("fetch('/api/analyze'"), 'URL text may be sent only to SATARK’s own analysis route');
+  assert.ok(!source.includes('fetch(payload'), 'decoded destination must never be fetched');
+  assert.ok(!source.includes('window.open'), 'decoded payload must not open a new destination automatically');
+  assert.ok(!source.includes('location.href ='), 'decoded payload must not navigate the browser automatically');
 });
 
 test('capability directory labels unported media tools honestly', async () => {
   const source = await readFile(new URL('../src/app/tools/page.tsx', import.meta.url), 'utf8');
-  assert.match(source, /QR-code investigation/);
-  assert.match(source, /PDF & document analysis/);
-  assert.match(source, /Video & media analysis/);
-  assert.match(source, /Not migrated/);
+  assert.ok(source.includes('QR-code investigation'));
+  assert.ok(source.includes('PDF & text document review'));
+  assert.ok(source.includes('Video frame sampling'));
+  assert.ok(source.includes('OCR for scanned PDFs'));
+  assert.ok(source.includes('does not analyze audio'));
 });

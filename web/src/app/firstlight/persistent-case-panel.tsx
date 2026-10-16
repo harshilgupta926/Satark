@@ -32,13 +32,22 @@ export default function PersistentCasePanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [requestedCaseId, setRequestedCaseId] = useState('');
+  const [caseListLoaded, setCaseListLoaded] = useState(false);
 
   async function refresh() {
+    setCaseListLoaded(false);
     const current = await getSession();
     setSession(current);
-    if (!current) { setTenant(null); setCases([]); return; }
+    if (!current) {
+      setTenant(null);
+      setCases([]);
+      setCaseListLoaded(true);
+      setRequestedCaseId('');
+      return;
+    }
+    const memberships = await listMyTenants();
     let active = getActiveTenant();
-    let memberships = await listMyTenants();
     if (!active || !memberships.some(x => x.id === active)) {
       active = memberships[0]?.id || null;
       if (active) setActiveTenant(active);
@@ -47,8 +56,30 @@ export default function PersistentCasePanel({
     setTenant(selected);
     if (selected) setCases(await listCases(selected.id));
     else setCases([]);
+    setCaseListLoaded(true);
   }
-  useEffect(() => { void refresh().catch(e => setError(e instanceof Error ? e.message : 'Could not load workspace.')); }, []);
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get('case_id') || '';
+    if (requested) setRequestedCaseId(requested);
+    void refresh().catch(e => setError(e instanceof Error ? e.message : 'Could not load workspace.'));
+  }, []);
+
+  useEffect(() => {
+    if (!requestedCaseId || !tenant || !session || !caseListLoaded || busy) return;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestedCaseId)) {
+      setError('The requested case link is invalid. Choose a saved case from this workspace.');
+      setRequestedCaseId('');
+      return;
+    }
+    const requested = cases.find(item => item.id === requestedCaseId);
+    setRequestedCaseId('');
+    window.history.replaceState(window.history.state, '', window.location.pathname);
+    if (!requested) {
+      setError('That case is not available in the currently selected workspace.');
+      return;
+    }
+    void loadSavedCase(requested);
+  }, [requestedCaseId, tenant, session, cases, caseListLoaded, busy]);
 
   async function persistIncident() {
     if (!tenant || !session) { setError('Sign in and select a workspace before saving an incident.'); return; }
