@@ -24,7 +24,7 @@ jobs:
       SATARK_PRODUCTION_URL: https://satark-qzym.vercel.app
     steps:
       - name: Check out current production branch revision
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: main
       - name: Check public production routes and security headers
