@@ -30,7 +30,7 @@ A hash calculated after collection proves that the stored snapshot has not chang
 | Deterministic investigation | Shared engine and regression tests; optional bounded model specialists | Documented end-to-end case; inspect each finding's evidence references, severity rationale, false-positive behavior, model timeout/malformed output | **Partial** |
 | Durable case/evidence/job persistence | Supabase tables, storage policies, job/audit migrations exist in repository | Real tenant fixture; create/import/investigate/reload/export; restart service and verify persistence | **Not end-to-end verified** |
 | Tenant isolation and RLS | Policies and pgTAP coverage exist; current CI preflight lacks dedicated test-account secrets | Run the real integration job with separate least-privilege identities for two tenants and a read-only viewer; demonstrate cross-tenant read/write denial | **Blocked; release gate** |
-| Approval lifecycle | Live public wrappers are SECURITY INVOKER; approval consumption is revoked from API/service roles until a trusted executor exists. Saathi pgTAP RPC hardening suite passed 30/30 assertions, including cross-tenant audit denial. | Test approval decisions and expiry against dedicated CI identities; implement a server-only actor-bound executor before re-enabling consumption; verify provider action/result audit and recovery | **Database hardening verified; executor not implemented** |
+| Approval lifecycle | Live public wrappers are SECURITY INVOKER; approval consumption is revoked from API/service roles until a trusted executor exists. Saathi pgTAP RPC hardening suite passed 30/30 assertions. New `firstlight_response_executor.py` provides a SQLite-backed, four-eyes, expiring, one-time approval ledger with hash-chained append-only audit, restart recovery and explicit verification state; 9 local unit tests pass. | Wire ledger into authenticated UI/server path or equivalent transactional store; connect provider adapters; independently verify provider-side outcome; run authenticated tenant and live lab tests | **Local executor foundation implemented; production integration not complete** |
 | Microsoft Defender/Entra response | Guarded provider adapters exist separately | Use disposable authorized lab device/account; verify exact target, provider action ID/status, completion, audit record, retry/idempotency, and recovery | **Not live verified** |
 | Audit integrity | Session-local hash chain and persisted audit structures exist in code | Verify append-only semantics and tamper detection; document trusted clock, key/anchor, retention, and export validation | **Partial** |
 | Deployment and operations | Docker images and runtime imports pass dedicated CI | Deploy approved commit; verify health/readiness, auth, logs, secrets, worker restart, migrations, backups, restore, and rollback | **Blocked / unverified** |
@@ -43,11 +43,18 @@ A hash calculated after collection proves that the stored snapshot has not chang
 - Full evidence and migration version details: [SUPABASE_ACCEPTANCE_2026-10-21.md](SUPABASE_ACCEPTANCE_2026-10-21.md).
 - This does not clear the GitHub tenant-isolation job, because its separate least-privilege test-account preflight still needs protected CI secrets. It also does not prove live Wazuh ingestion or provider-side response.
 
+## Response executor foundation added (2026-10-21)
+
+- `firstlight_response_executor.py` implements a durable local approval ledger with an allowlist for two response actions, tenant/case binding, requester/approver separation, expiry, idempotency keys, a single-use execution claim, explicit `submitted` versus `verified` states, fail-closed handling of uncertain outcomes, restart recovery, and an append-only SHA-256 audit chain.
+- `tests/test_firstlight_response_executor.py` covers nine unit scenarios. These are mocked/local guardrail tests, not live-provider evidence.
+- `docs/FIRSTLIGHT_RESPONSE_EXECUTOR.md` documents the integration boundary and acceptance requirements.
+- **Important:** this foundation is not yet wired into the current simulation-only web approval route or Supabase approval RPCs. Existing consumption restrictions must remain in place. Do not enable live response based on this foundation alone.
+
 ## 3. Prioritized work list
 
 ### P0 — must pass before claiming a functional real-world agent
 
-- [ ] Complete CI and CodeQL checks on the exact proposed merge commit.
+- [ ] Complete CI and CodeQL checks on the exact proposed merge commit, including the new response-executor tests.
 - [ ] Provide dedicated, least-privilege Supabase test-account secrets in the repository's protected CI environment; do not weaken or skip the tenant-isolation job to make CI green.
 - [ ] Run the real two-tenant RLS tests and inspect results for cases, evidence, notes, investigation jobs, approvals, and storage objects.
 - [ ] Reconcile Supabase migration history using the repository's guarded repair procedure. Inspect the linked project and the exact dry-run first; never use an unreviewed broad `supabase db push`.
