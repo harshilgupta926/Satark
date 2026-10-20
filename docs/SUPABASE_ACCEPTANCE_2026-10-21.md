@@ -48,9 +48,7 @@ Additional live catalog checks verified:
 
 ### Additional live Saathi isolation test
 
-Executed `supabase/tests/satark_security.test.sql` against the Saathi test project through the connected SQL runner. The run reached the final assertion, which returned `ok 50 - viewers cannot read raw Wazuh source snapshots`; no SQL error was returned. Immediately afterwards, read-only checks found zero fixture tenants, cases, evidence, findings, or storage objects, and confirmed the temporary `satark-evidence` bucket was absent again. This verifies that the test transaction rolled back its fixture data and bucket.
-
-The SQL connector surfaces only the final result row for a multi-statement script, not the complete per-assertion TAP transcript. Therefore the complete assertion-by-assertion record remains the isolated GitHub CI run below; it reports all database test files successful (113 total tests).
+Executed the same 50 assertions from `supabase/tests/satark_security.test.sql` against the Saathi test project using a transaction-scoped result-capture harness. The harness captured every assertion result: **50/50 returned `ok`**, with no `not ok` results. Immediately afterwards, read-only checks found zero fixture tenants, cases, evidence, findings, or storage objects, and confirmed the temporary `satark-evidence` bucket was absent again. This verifies the test transaction rolled back its fixture data and bucket. The harness's temporary result table and grant were themselves inside the same transaction and rolled back.
 
 ### Security-advisor snapshot
 
