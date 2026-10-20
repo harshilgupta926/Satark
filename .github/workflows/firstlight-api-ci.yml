@@ -73,6 +73,8 @@ on:
       - "tests/test_firstlight_api_details.py"
       - "tests/test_firstlight_agents.py"
       - "tests/test_firstlight_wazuh.py"
+      - "scripts/accept_firstlight_wazuh_live.py"
+      - "tests/test_firstlight_wazuh_live_acceptance.py"
       - "tests/test_firstlight_engine.py"
       - ".github/workflows/firstlight-api-ci.yml"
   workflow_dispatch:
