@@ -179,11 +179,13 @@ end
 $function$;
 
 revoke all on function satark_private.authorize_response_action(uuid,uuid,uuid,text,text) from public, anon;
-revoke all on function satark_private.consume_response_approval(uuid,uuid,uuid,text,text) from public, anon;
+revoke all on function satark_private.consume_response_approval(uuid,uuid,uuid,text,text) from public, anon, authenticated, service_role;
 revoke all on function satark_private.decide_approval(uuid,text,text) from public, anon;
 revoke all on function satark_private.list_assignable_members(uuid) from public, anon;
 grant execute on function satark_private.authorize_response_action(uuid,uuid,uuid,text,text) to authenticated;
-grant execute on function satark_private.consume_response_approval(uuid,uuid,uuid,text,text) to authenticated;
+-- Deliberately do not grant approval consumption to API roles. No trusted
+-- response executor exists yet; exposing consumption lets a caller burn an
+-- approval without proving the corresponding provider action was attempted.
 grant execute on function satark_private.decide_approval(uuid,text,text) to authenticated;
 grant execute on function satark_private.list_assignable_members(uuid) to authenticated;
 
@@ -251,10 +253,10 @@ end
 $function$;
 
 revoke all on function public.satark_authorize_response_action(uuid,uuid,uuid,text,text) from public, anon;
-revoke all on function public.satark_consume_response_approval(uuid,uuid,uuid,text,text) from public, anon;
+revoke all on function public.satark_consume_response_approval(uuid,uuid,uuid,text,text) from public, anon, authenticated, service_role;
 revoke all on function public.satark_decide_approval(uuid,text,text) from public, anon;
 revoke all on function public.satark_list_assignable_members(uuid) from public, anon;
 grant execute on function public.satark_authorize_response_action(uuid,uuid,uuid,text,text) to authenticated;
-grant execute on function public.satark_consume_response_approval(uuid,uuid,uuid,text,text) to authenticated;
+-- Approval consumption remains inaccessible until a trusted executor is implemented.
 grant execute on function public.satark_decide_approval(uuid,text,text) to authenticated;
 grant execute on function public.satark_list_assignable_members(uuid) to authenticated;
