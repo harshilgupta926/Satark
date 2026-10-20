@@ -1,5 +1,21 @@
 # FIRSTLIGHT implementation status
 
+## PR #217 audit continuation — 2026-10-21 UTC
+
+This addendum is scoped to branch `ops/track1-readiness-audit`; it does not replace the main-branch baseline above.
+
+- **Audit branch head before this documentation update:** `278a7acd1c8f9de4a1b79608035f09a50b5dedc7`.
+- **Nirdhoom (SATARK schema work):** live catalog checks confirm SATARK approval RPC wrappers use `SECURITY INVOKER`, direct approval consumption is disabled for `anon`, `authenticated`, and `service_role`, membership-sensitive policies use `satark_private.has_membership`, and the five intended foreign-key support indexes exist. The security advisor reports one intentional worker-private checkpoint-table notice and nine SECURITY DEFINER warnings on unrelated Nirdhoom application functions; those unrelated functions were not changed.
+- **Saathi (testing only):** `satark_rpc_hardening.test.sql` previously passed 30/30 assertions. `satark_security.test.sql` was also executed against Saathi and reached its final `ok 50` assertion. Post-run queries verified zero persistent test tenants, cases, evidence, findings, or storage objects, and the transaction-created `satark-evidence` bucket was absent after rollback. The SQL connector returns only the final row for this multi-statement script; use CI as the full TAP transcript.
+- **Isolated migration/security CI:** [run 39479567883](https://github.com/kaustubhdua/Satark/actions/runs/39479567883) passed clean-database migration application, migration-state verification, and database security regression tests. Four SQL test files passed, 113 tests total.
+- **FIRSTLIGHT API CI:** [run 39479567938](https://github.com/kaustubhdua/Satark/actions/runs/39479567938) passed 114 tests, built all three API/worker Docker images, and passed runtime import checks. [CodeQL](https://github.com/kaustubhdua/Satark/actions/runs/39479567808) and [Web CI](https://github.com/kaustubhdua/Satark/actions/runs/39479567718) also passed on that code candidate.
+- **Exact-head verification after the latest documentation change:** fresh CI, CodeQL, Web CI, and isolated migration validation are running on `278a7acd1c8f9de4a1b79608035f09a50b5dedc7`; do not mark those checks complete until their runs finish.
+- **Still blocked:** the application-level tenant-isolation CI job fails its preflight because the dedicated Saathi test-account Actions secrets are missing. Its actual authenticated RLS tests are skipped, not passed. The live Wazuh API and persistent-worker acceptance probes have not been run against authorized real telemetry. Microsoft Defender/Entra actions have not been executed against an authorized test tenant, and no durable case-bound response executor is released. No SATARK production deployment has been verified.
+- **Current release decision:** NO-GO. Keep PR #217 draft and unmerged until exact-head checks finish, tenant isolation runs with dedicated least-privilege identities, live Wazuh evidence/checkpoint acceptance passes, and a case-bound response is verified against an authorized Microsoft test environment.
+- **Research anchors:** [NIST SP 800-61 Rev. 3](https://csrc.nist.gov/pubs/sp/800/61/r3/final) for incident response; [Wazuh Indexer API](https://documentation.wazuh.com/current/user-manual/indexer-api/index.html) for real alert access; [Supabase database testing](https://supabase.com/docs/guides/database/testing) and [RLS guidance](https://supabase.com/docs/guides/database/postgres/row-level-security); [Defender isolation API](https://learn.microsoft.com/en-us/microsoft-365/security/defender-endpoint/isolate-machine) and [Graph revokeSignInSessions](https://learn.microsoft.com/en-us/graph/api/user-revokesigninsessions?view=graph-rest-1.0).
+
+---
+
 Last reviewed: 2026-10-20 (UTC; main SHA `cc250e13ef0cd9d5e8f77a832e87617365a65ddf`)
 
 ## Latest release-gate recheck — 2026-10-20 17:10 UTC
