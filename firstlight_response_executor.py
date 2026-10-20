@@ -116,6 +116,7 @@ class ResponseLedger:
           created_at TEXT NOT NULL,
           expires_at TEXT NOT NULL,
           approved_by TEXT,
+          executor_id TEXT,
           approved_at TEXT,
           decision_reason TEXT,
           idempotency_key TEXT NOT NULL UNIQUE,
@@ -160,6 +161,10 @@ class ResponseLedger:
         CREATE INDEX IF NOT EXISTS response_audit_approval_idx
           ON response_audit_events(approval_id, sequence);
         """)
+        # Upgrade existing local ledgers without deleting approvals or audit history.
+        columns = {row["name"] for row in self._db.execute("PRAGMA table_info(response_approvals)")}
+        if "executor_id" not in columns:
+            self._db.execute("ALTER TABLE response_approvals ADD COLUMN executor_id TEXT")
 
     def _event(self, approval_id: str, tenant_id: str, case_id: str, actor_id: str,
                event_type: str, data: Mapping[str, Any], occurred_at: str) -> None:
@@ -339,7 +344,7 @@ class ResponseLedger:
                     self._event(approval_id, tenant_id, case_id, executor_id, "execution.expired", {}, now)
                     self._db.commit()
                     raise ResponseExecutionError("Approval has expired; no provider request was made.")
-                self._db.execute("UPDATE response_approvals SET status='executing',updated_at=? WHERE approval_id=? AND status='approved'", (now, approval_id))
+                self._db.execute("UPDATE response_approvals SET status='executing',executor_id=?,updated_at=? WHERE approval_id=? AND status='approved'", (executor_id, now, approval_id))
                 self._event(approval_id, tenant_id, case_id, executor_id, "execution.claimed", {}, now)
                 self._db.commit()
                 claimed = self._db.execute("SELECT * FROM response_approvals WHERE approval_id=?", (approval_id,)).fetchone()
@@ -433,6 +438,8 @@ class ResponseLedger:
                     raise ResponseExecutionError("Approval not found for this tenant and case.")
                 if row["status"] not in {"submitted", "unknown"}:
                     raise ResponseExecutionError("Only submitted or uncertain actions can be reconciled.")
+                if verifier_id in {row["executor_id"], row["approved_by"], row["requested_by"]}:
+                    raise ResponseExecutionError("Independent verification requires an identity distinct from requester, approver, and executor.")
                 if row["provider_reference"] and row["provider_reference"] != provider_reference:
                     raise ResponseExecutionError("Provider reference does not match the submitted action.")
                 self._db.execute(

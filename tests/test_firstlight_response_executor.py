@@ -77,6 +77,28 @@ class ResponseLedgerTests(unittest.TestCase):
             verifier_id="verifier-d", status="verified", provider_reference="action-123", detail="Provider state independently checked")
         self.assertEqual(verified.status, "verified")
 
+    def test_verification_requires_independent_identity(self):
+        self.approve()
+        self.ledger.execute_approved(
+            self.approval.approval_id, tenant_id="tenant-a", case_id="case-a",
+            executor_id="executor-c",
+            handler=lambda _: {"status": "submitted", "provider_reference": "action-independent", "detail": "accepted"},
+        )
+        for identity in ("analyst-a", "approver-b", "executor-c"):
+            with self.subTest(identity=identity):
+                with self.assertRaisesRegex(ResponseExecutionError, "Independent verification"):
+                    self.ledger.record_verification(
+                        self.approval.approval_id, tenant_id="tenant-a", case_id="case-a",
+                        verifier_id=identity, status="verified", provider_reference="action-independent",
+                        detail="must be independently verified",
+                    )
+        verified = self.ledger.record_verification(
+            self.approval.approval_id, tenant_id="tenant-a", case_id="case-a",
+            verifier_id="independent-reviewer", status="verified", provider_reference="action-independent",
+            detail="Provider state checked independently",
+        )
+        self.assertEqual(verified.status, "verified")
+
     def test_ambiguous_provider_exception_is_unknown_and_not_retried(self):
         self.approve()
         outcome = self.ledger.execute_approved(self.approval.approval_id, tenant_id="tenant-a", case_id="case-a",

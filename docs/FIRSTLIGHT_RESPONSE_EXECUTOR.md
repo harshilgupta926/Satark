@@ -8,7 +8,7 @@ This module is a local, open-source foundation for a trusted response executor. 
 - Every request is bound to tenant, case, requester, exact target, reason, parameters, idempotency key, and expiry.
 - Four-eyes approval: the requester cannot approve or deny their own request.
 - One-time execution claim is committed before the provider handler runs; the same approval cannot be executed twice.
-- Provider submission is a separate state from provider-side verification.
+- Provider submission is a separate state from provider-side verification; the executor identity is persisted, and verification is rejected if performed by the requester, approver, or executor.
 - Any exception after execution starts becomes `unknown`; the system does not blindly retry a potentially successful provider operation.
 - Restart recovery marks abandoned `executing` records as `unknown`, then requires independent provider reconciliation.
 - SQLite transaction durability, immutable action/target/payload bindings, restrictive action payloads, append-only audit triggers, and a SHA-256 hash chain.
