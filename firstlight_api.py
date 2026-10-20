@@ -1,8 +1,9 @@
 """Shared FIRSTLIGHT investigation API.
 
-This service wraps the repository's canonical Python engine so web and
-Streamlit workflows can use the same evidence verification and investigation
-rules. It performs no live collection or real response actions.
+The case-investigation route analyzes bounded caller-supplied evidence. The
+Wazuh integration routes query the explicitly configured, read-only Wazuh
+Indexer and can investigate returned alerts. No route executes live response
+actions; Wazuh investigation results are not persisted by these API handlers.
 """
 from __future__ import annotations
 
