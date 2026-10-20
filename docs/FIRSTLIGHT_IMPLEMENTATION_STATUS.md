@@ -74,6 +74,11 @@ This status describes repository-backed behavior and explicitly lists external c
 - The Wazuh integration is merged in PR #160; its FIRSTLIGHT API CI, CodeQL, general CI, Web CI, and isolated migration validation passed on that PR head. PR #161 and PR #164 storage-policy cleanup checks passed; PR #167's object-key regression test and PR #168's SATARK foreign-key indexes also passed their exact-head CI, Web CI, CodeQL and isolated migration checks.
 - Vercel currently has an older production deployment at SHA `21abd4c7466cb7490ae1acb372d04008f72e40d5`; the latest available deployment is a READY preview for branch `feat/firstlight-wazuh-rebased` at SHA `a6ad65ea910c40362bb9005febb447893776002f`. A new deployment attempt was blocked by HTTP 402 `api-deployments-free-per-day` with a 24-hour retry window; the runtime-error API returned 403. The production environment inventory lacks `FIRSTLIGHT_API_URL`, `FIRSTLIGHT_API_TOKEN`, `FIRSTLIGHT_WAZUH_SYNC_TOKEN` and Wazuh Indexer configuration. No authorized Wazuh endpoint/credentials or SATARK test tenant/case/actor exists; all 11 SATARK data tables currently contain zero rows, so real end-to-end ingestion remains blocked.
 
+## Latest validation after live acceptance probe addition
+
+- FIRSTLIGHT API CI passed on commit `a36d9755962730463f9231f2eaa5ef347c695094` in [workflow run 39475104883](https://github.com/kaustubhdua/Satark/actions/runs/39475104883). The full shared API/engine pytest command passed, all three API/worker Docker builds succeeded, and runtime imports passed inside the images. This includes the live acceptance validator unit tests; it does **not** mean the live acceptance probe was run against Wazuh.
+- CodeQL and general CI had not completed at the time of this status update. The Vercel status on the candidate SHA remains failed with the existing build-rate-limit condition. Keep the release gate closed until those results and the required real infrastructure tests are resolved.
+
 ## Reproducible live acceptance probe (2026-10-20)
 
 - Added `scripts/accept_firstlight_wazuh_live.py` and regression tests in `tests/test_firstlight_wazuh_live_acceptance.py`. The probe calls the configured API and refuses an empty alert result; it never seeds events or uses the fictional demo case as a fallback.
