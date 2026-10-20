@@ -81,8 +81,8 @@ This status describes repository-backed behavior and explicitly lists external c
 
 ## Latest CI after acceptance probes (2026-10-21)
 
-- FIRSTLIGHT API CI passed on head `5c3591afdcb4b0dca352e4091b5a9989d3631790` in [workflow run 39476036322](https://github.com/kaustubhdua/Satark/actions/runs/39476036322): 114 tests passed, all three API/worker Docker images built, and runtime imports passed. This includes unit tests for both acceptance validators, not a live Wazuh or Supabase acceptance run.
-- CodeQL and general CI were still in progress at the last check. The general CI's Supabase tenant-isolation preflight remains an external release gate because dedicated least-privilege test credentials have not been configured; previous runs skipped the actual RLS tests for that reason.
+- FIRSTLIGHT API CI passed on latest head `b5a88248546e26bda68766aea0de5dceec029e6e` in [workflow run 39478121042](https://github.com/kaustubhdua/Satark/actions/runs/39478121042): 114 tests passed, all three API/worker Docker images built, and runtime imports passed. This includes unit tests for both acceptance validators, not a live Wazuh or Supabase acceptance run.
+- CodeQL was still running on the latest head at the last check. The clean-database migration/security workflow was running; its previous run completed all migration/security test steps successfully but was cancelled at the workflow level during concurrent updates. The general CI's Supabase tenant-isolation preflight remains an external release gate because dedicated least-privilege test credentials have not been configured; actual GitHub RLS tests are skipped for that reason.
 
 ## Live Supabase approval hardening and test results (2026-10-21)
 
