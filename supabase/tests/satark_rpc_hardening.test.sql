@@ -1,5 +1,5 @@
 begin;
-select plan(26);
+select plan(30);
 
 -- Local-only fixtures. This test runs in the isolated Supabase migration
 -- validation job and rolls back all Auth users, tenants, memberships, and audit events.
@@ -77,6 +77,28 @@ select ok(
   and not has_function_privilege('anon','satark_private.consume_response_approval(uuid,uuid,uuid,text,text)','EXECUTE')
   and not has_function_privilege('anon','satark_private.list_assignable_members(uuid)','EXECUTE'),
   'anonymous callers cannot execute private approval implementations');
+select ok((
+  select c.relrowsecurity and c.relforcerowsecurity
+    and (select count(*)=0 from pg_policies p where p.schemaname='public' and p.tablename='satark_ingestion_checkpoints')
+  from pg_class c join pg_namespace n on n.oid=c.relnamespace
+  where n.nspname='public' and c.relname='satark_ingestion_checkpoints'
+), 'Wazuh checkpoints force RLS and intentionally expose no client policies');
+select ok(
+  not has_table_privilege('anon','public.satark_ingestion_checkpoints','SELECT')
+  and not has_table_privilege('authenticated','public.satark_ingestion_checkpoints','SELECT')
+  and has_table_privilege('service_role','public.satark_ingestion_checkpoints','SELECT')
+  and has_table_privilege('service_role','public.satark_ingestion_checkpoints','INSERT')
+  and has_table_privilege('service_role','public.satark_ingestion_checkpoints','UPDATE'),
+  'Wazuh checkpoint access is restricted to the trusted worker role');
+select ok((
+  select i.indisunique
+  from pg_index i join pg_class c on c.oid=i.indexrelid
+  where c.relname='satark_evidence_wazuh_document_once'
+), 'Wazuh evidence has a unique source-document idempotency index');
+select ok(
+  not has_function_privilege('service_role','public.satark_consume_response_approval(uuid,uuid,uuid,text,text)','EXECUTE')
+  and not has_function_privilege('service_role','satark_private.consume_response_approval(uuid,uuid,uuid,text,text)','EXECUTE'),
+  'approval consumption is disabled for service-role calls until an executor is reviewed');
 select ok(
   has_function_privilege('authenticated','public.satark_decide_approval(uuid,text,text)','EXECUTE')
   and has_function_privilege('authenticated','public.satark_authorize_response_action(uuid,uuid,uuid,text,text)','EXECUTE')
