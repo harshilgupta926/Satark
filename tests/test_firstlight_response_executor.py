@@ -112,6 +112,19 @@ class ResponseLedgerTests(unittest.TestCase):
                                          executor_id="executor-c", handler=lambda _: self.fail("must not retry"))
         self.assertTrue(self.ledger.verify_audit_chain())
 
+    def test_approved_action_binding_cannot_be_mutated_after_creation(self):
+        with self.assertRaisesRegex(sqlite3.IntegrityError, "binding is immutable"):
+            self.ledger._db.execute(
+                "UPDATE response_approvals SET target='different-device' WHERE approval_id=?",
+                (self.approval.approval_id,),
+            )
+        with self.assertRaisesRegex(sqlite3.IntegrityError, "binding is immutable"):
+            self.ledger._db.execute(
+                "UPDATE response_approvals SET payload_json='{}' WHERE approval_id=?",
+                (self.approval.approval_id,),
+            )
+        self.assertEqual(self.ledger.get_approval(self.approval.approval_id, tenant_id="tenant-a", case_id="case-a").target, "device-lab-01")
+
     def test_denial_is_terminal(self):
         denied = self.ledger.decide(self.approval.approval_id, tenant_id="tenant-a", case_id="case-a",
             decided_by="approver-b", approve=False, decision_reason="Insufficient evidence")

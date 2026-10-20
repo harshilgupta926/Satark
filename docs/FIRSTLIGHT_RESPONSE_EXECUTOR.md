@@ -11,7 +11,7 @@ This module is a local, open-source foundation for a trusted response executor. 
 - Provider submission is a separate state from provider-side verification.
 - Any exception after execution starts becomes `unknown`; the system does not blindly retry a potentially successful provider operation.
 - Restart recovery marks abandoned `executing` records as `unknown`, then requires independent provider reconciliation.
-- SQLite transaction durability, restrictive action payloads, append-only audit triggers, and a SHA-256 hash chain.
+- SQLite transaction durability, immutable action/target/payload bindings, restrictive action payloads, append-only audit triggers, and a SHA-256 hash chain.
 - No network endpoint is exposed by this module; a trusted caller must authenticate the operator and authorize the tenant/case before invoking it.
 
 ## Local tests

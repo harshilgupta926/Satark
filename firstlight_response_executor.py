@@ -139,6 +139,20 @@ class ResponseLedger:
           BEFORE UPDATE ON response_audit_events BEGIN SELECT RAISE(ABORT, 'response audit is append-only'); END;
         CREATE TRIGGER IF NOT EXISTS response_audit_no_delete
           BEFORE DELETE ON response_audit_events BEGIN SELECT RAISE(ABORT, 'response audit is append-only'); END;
+        CREATE TRIGGER IF NOT EXISTS response_approval_binding_immutable
+          BEFORE UPDATE ON response_approvals
+          WHEN OLD.approval_id IS NOT NEW.approval_id
+            OR OLD.tenant_id IS NOT NEW.tenant_id
+            OR OLD.case_id IS NOT NEW.case_id
+            OR OLD.action IS NOT NEW.action
+            OR OLD.target IS NOT NEW.target
+            OR OLD.reason IS NOT NEW.reason
+            OR OLD.payload_json IS NOT NEW.payload_json
+            OR OLD.requested_by IS NOT NEW.requested_by
+            OR OLD.created_at IS NOT NEW.created_at
+            OR OLD.expires_at IS NOT NEW.expires_at
+            OR OLD.idempotency_key IS NOT NEW.idempotency_key
+          BEGIN SELECT RAISE(ABORT, 'response approval binding is immutable'); END;
         CREATE INDEX IF NOT EXISTS response_approvals_case_idx
           ON response_approvals(tenant_id, case_id, created_at DESC);
         CREATE INDEX IF NOT EXISTS response_approvals_status_expiry_idx
