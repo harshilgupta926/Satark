@@ -8,6 +8,7 @@ returned and its normalized snapshot digests verify locally.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -72,7 +73,7 @@ def validate_response(payload: Any) -> dict[str, Any]:
             raise ValueError("Wazuh source snapshot digest is malformed")
         expected = item.get("sha256")
         actual = canonical_sha256(record)
-        if not isinstance(expected, str) or not re.fullmatch(r"[0-9a-f]{64}", expected) or not hashlib.compare_digest(expected, actual):
+        if not isinstance(expected, str) or not re.fullmatch(r"[0-9a-f]{64}", expected) or not hmac.compare_digest(expected, actual):
             raise ValueError("Normalized evidence snapshot digest verification failed")
     investigation = payload.get("investigation")
     if not isinstance(investigation, dict) or investigation.get("case_id") != payload.get("case_id"):
