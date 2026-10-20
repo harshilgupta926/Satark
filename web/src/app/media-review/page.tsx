@@ -370,7 +370,7 @@ export default function MediaReviewPage() {
             <p className="hint">Each preview is an independently encoded JPEG sample. Its hash is a reproducible identifier for that preview—not a hash of the source video's original decoded frame or a proof of provenance.</p>
             <div className="media-frame-grid">
               {review.frames.map(frame => <article className="media-frame-card" key={frame.index}>
-                <img src={frame.preview} alt={'Locally sampled video frame ' + frame.index + ' at ' + frame.timestampSeconds.toFixed(2) + ' seconds'} />
+                <img src={frame.preview} alt={'Locally sampled video frame ' + frame.index + ' at ' + frame.timestampSeconds.toFixed(2) + ' seconds'} loading="lazy" decoding="async" />
                 <div className="media-frame-meta"><span>FRAME {String(frame.index).padStart(2, '0')}</span><strong>{frame.timestampSeconds.toFixed(2)} s</strong></div>
                 <div className="media-luminance"><span>Mean preview luminance</span><strong>{frame.meanLuminance} / 255</strong></div>
                 <code>SHA-256 {frame.sha256}</code>
