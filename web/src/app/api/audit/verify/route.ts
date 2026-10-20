@@ -1,3 +1,4 @@
+import { isAllowedSupabaseEndpoint } from '@/lib/supabase-endpoint';
 import { NextResponse } from 'next/server';
 import { readBoundedResponseJson } from '@/lib/read-bounded-response-json';
 export const runtime = 'nodejs';
@@ -13,7 +14,7 @@ export async function GET(request: Request) {
   if (!tenantId || !UUID.test(tenantId)) return reply({ error: 'A valid tenant_id is required.' }, 400);
   try {
     const url = new URL(raw);
-    if (url.protocol !== 'https:' || !url.hostname.endsWith('.supabase.co')) return reply({ error: 'Audit verification is not configured.' }, 503);
+    if (!isAllowedSupabaseEndpoint(url)) return reply({ error: 'Audit verification is not configured.' }, 503);
     const response = await fetch(url.origin + '/rest/v1/rpc/satark_verify_audit_chain', {
       method: 'POST',
       headers: { apikey: key, Authorization: 'Bearer ' + match[1], 'Content-Type': 'application/json', Accept: 'application/json' },
