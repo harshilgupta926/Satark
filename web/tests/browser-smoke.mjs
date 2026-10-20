@@ -158,6 +158,8 @@ async function inspectViewport(viewport, label) {
       const readinessState = await readiness.locator('.fl-readiness-state').innerText();
       assert.match(readinessState, /STATUS UNAVAILABLE|CHECKING…|PROBE REPORTED · VERIFY RESULT|CONFIGURATION ONLY/,
         `${label}: readiness badge must not imply an unverified provider is healthy`);
+      // Do not let the route-scoped fixture affect the later sign-in smoke test.
+      await page.evaluate(() => localStorage.removeItem('satark:auth-session:v1'));
     }
     if (route.path === '/') {
       const disclosure = page.locator('.tools-disclosure');
