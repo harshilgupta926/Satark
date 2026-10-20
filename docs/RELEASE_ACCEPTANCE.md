@@ -16,7 +16,7 @@ This record distinguishes automated CI evidence from checks that still require a
 - PR #173 head `130670e01087d8663427a85c5bbb37eb4b78f4e4`: FIRSTLIGHT API CI, CodeQL, web validation, and production browser/accessibility smoke passed for empty-window checkpoint advancement.
 - The workflow named `Supabase tenant-isolation integration` reported a successful job, but its live least-privilege-account test step was skipped because dedicated test credentials were unavailable. Do not treat that skipped step as evidence of live tenant-isolation success.
 - PR #177's 50-assertion pgTAP security suite and PR #178's policy-contract tests passed isolated migration validation. PR #180's FIRSTLIGHT API CI passed for the worker membership-revalidation change.
-- Current source baseline `1acf9e1392f3d0110f01cf1a2eed7a4a70946894` has post-merge CI and CodeQL still running at this review and a failing Vercel deployment status due to the account's deployment quota. The latest production deployment SHA is older than this baseline.
+- Current source baseline `1acf9e1392f3d0110f01cf1a2eed7a4a70946894` has post-merge CI and CodeQL still running at this review and a failing Vercel deployment status due to the account's deployment quota. The latest verified READY production deployment is `dpl_4HRahKGhrAGeEKQdqB2AhRcH4GUJ` at source SHA `1b6a2dee26498ef6eef5f28ba58062264ff98d07`, 11 commits behind this baseline.
 
 These results establish that the listed workflows passed on their exact PR heads. They do not establish that live provider credentials work or that the full production workflow has been accepted.
 
