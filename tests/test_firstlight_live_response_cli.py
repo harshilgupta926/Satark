@@ -60,6 +60,7 @@ def test_exact_confirmation_calls_only_explicit_target(monkeypatch, capsys):
         confirmation="CONFIRM REVOKE_SESSIONS analyst@example.com",
         reason="case FL-1",
     )
-    output = json.loads(capsys.readouterr().out.split("Type exactly")[0].split("This sends a real request to Microsoft. It is not a simulation.\n")[-1])
+    captured = capsys.readouterr().out
+    output = json.loads(captured[captured.index("{\\n"):])
     assert output["status"] == "submitted"
     assert "not proof of completion" in output["note"]
