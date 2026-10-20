@@ -5,6 +5,9 @@ import FirstlightReadiness from '../../components/firstlight-readiness';
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getActiveTenant, getSession, type SatarkSession } from '../../lib/satark-auth';
+import { parseCsv, parseIsoTimestamp, toggleSimulatedTamper } from '../../lib/firstlight-import.mjs';
+import { buildFirstlightFindings, getTrustedFirstlightEvidence } from '../../lib/firstlight-investigation.mjs';
+
 // Large workspace and insight views are loaded only when their section/tab is needed.
 const PersistentCasePanel = dynamic(() => import('./persistent-case-panel'), {
   ssr: false,
@@ -18,8 +21,6 @@ const EventTracker = dynamic(() => import('./insights').then(module => module.Ev
   ssr: false,
   loading: () => <p className="hint" role="status">Loading event timeline…</p>,
 });
-import { parseCsv, parseIsoTimestamp, toggleSimulatedTamper } from '../../lib/firstlight-import.mjs';
-import { buildFirstlightFindings, getTrustedFirstlightEvidence } from '../../lib/firstlight-investigation.mjs';
 // The fallback reads only supplied summaries; it does not inspect the endpoint or file.
 
 type Evidence = { id: string; time: string; source: string; kind: string; summary: string; digest: string; tampered?: boolean; details?: Record<string, unknown>; metadata?: Record<string, unknown> };
