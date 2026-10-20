@@ -162,6 +162,13 @@ async function inspectViewport(viewport, label) {
       await page.evaluate(() => localStorage.removeItem('satark:auth-session:v1'));
     }
     if (route.path === '/') {
+      const deferredReadiness = page.locator('.readiness-lazy-placeholder');
+      assert.equal(await deferredReadiness.count(), 1,
+        `${label}: below-the-fold service readiness should start as a deferred placeholder`);
+      assert.equal(await page.locator('.readiness-banner:not(.readiness-lazy-placeholder)').count(), 0,
+        `${label}: service readiness module must not render before its section is approached`);
+      await deferredReadiness.scrollIntoViewIfNeeded();
+      await page.waitForFunction(() => !!document.querySelector('.readiness-banner:not(.readiness-lazy-placeholder)'));
       const disclosure = page.locator('.tools-disclosure');
       // Force the disclosure into its expanded state instead of toggling it.
       // A click is state-dependent and can accidentally close it if browser
