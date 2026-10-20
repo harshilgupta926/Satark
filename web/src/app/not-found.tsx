@@ -1,3 +1,17 @@
+import SiteHeader from './site-header';
+
 export default function NotFound() {
- return <main className="loading-screen"><div className="loader-mark">S<span>.</span></div><div className="loader-eyebrow">404 / NO MATCHING ROUTE</div><h1>This signal leads nowhere.</h1><p>The page may have moved, or the address may be incorrect.</p><a className="btn btn-primary" href="/">Return to workspace →</a></main>;
+  return (
+    <main className="shell">
+      <SiteHeader />
+      <div className="system-screen" id="main-content" tabIndex={-1}>
+        <div>
+          <div className="eyebrow">404 · Page not found</div>
+          <h1>This page doesn’t exist.</h1>
+          <p>The address may be incorrect, or the page may have moved.</p>
+          <a className="btn btn-primary" href="/">Return home</a>
+        </div>
+      </div>
+    </main>
+  );
 }

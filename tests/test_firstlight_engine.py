@@ -1,10 +1,12 @@
 import unittest
+from datetime import datetime, timezone
 
 from firstlight_engine import (
     append_audit,
     apply_simulated_response,
     create_demo_case,
     investigate_case,
+    prioritize_evidence,
     seal_evidence,
     verify_audit_chain,
     verify_evidence,
@@ -66,6 +68,38 @@ class FirstlightEngineTests(unittest.TestCase):
         timeline = investigate_case(self.case, evidence)["timeline"]
         self.assertEqual(timeline[0]["event_id"], "EV-001")
         self.assertEqual(timeline[1]["event_id"], "EV-002")
+
+    def test_evidence_priority_uses_volatility_relevance_and_recency(self):
+        now = datetime(2026, 10, 10, 9, 30, tzinfo=timezone.utc)
+        priorities = prioritize_evidence(self.evidence, now=now)
+        self.assertEqual(priorities[0]["evidence_id"], "EV-002")
+        self.assertEqual(priorities[0]["priority"], "critical")
+        self.assertTrue(any("Volatility" in reason for reason in priorities[0]["reasons"]))
+        self.assertTrue(any("Recent source timestamp" in reason for reason in priorities[0]["reasons"]))
+        scores = [item["priority_score"] for item in priorities]
+        self.assertEqual(scores, sorted(scores, reverse=True))
+
+    def test_priority_mismatch_is_flagged_for_quarantine_not_trusted(self):
+        tampered = dict(self.evidence[0])
+        tampered["record"] = dict(tampered["record"], summary="Changed after sealing")
+        result = prioritize_evidence([tampered])[0]
+        self.assertIn("MISMATCH", result["integrity"])
+        self.assertIn("Quarantine", result["recommended_next_step"])
+        self.assertTrue(any("Integrity mismatch" in reason for reason in result["reasons"]))
+
+    def test_priority_rejects_invalid_container_and_skips_malformed_items(self):
+        with self.assertRaises(ValueError):
+            prioritize_evidence(None)
+        results = prioritize_evidence([None, {"evidence_id": "broken", "record": "bad"}])
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["evidence_id"], "broken")
+
+    def test_investigation_includes_priorities_for_evidence(self):
+        result = investigate_case(self.case, self.evidence)
+        known = {item["evidence_id"] for item in self.evidence}
+        self.assertEqual({item["evidence_id"] for item in result["evidence_priorities"]}, known)
+        self.assertTrue(all(item["priority"] in {"critical", "high", "medium", "low"}
+                            for item in result["evidence_priorities"]))
 
     def test_audit_chain_detects_modification(self):
         chain = append_audit([], "created", "tester", {"case": "demo"})
@@ -181,6 +215,87 @@ class FirstlightEngineTests(unittest.TestCase):
         chain = append_audit(chain, "reviewed", "tester", {"decision": "reject"})
         self.assertTrue(verify_audit_chain(chain))
         self.assertFalse(verify_audit_chain(list(reversed(chain))))
+
+    def test_findings_are_derived_from_custom_evidence_ids(self):
+        events = [
+            {"event_id": "CASE-X-1", "timestamp": "2026-10-10T09:00:00Z", "source": "identity", "kind": "authentication", "summary": "Successful login from unfamiliar source", "details": {"result": "success", "novel_source": True, "account": "demo@example.test"}},
+            {"event_id": "CASE-X-2", "timestamp": "2026-10-10T09:01:00Z", "source": "endpoint", "kind": "process", "summary": "Script launched", "details": {"process": "powershell.exe", "parent": "outlook.exe", "host": "HOST-X"}},
+            {"event_id": "CASE-X-3", "timestamp": "2026-10-10T09:02:00Z", "source": "network", "kind": "connection", "summary": "Suspicious destination contacted", "details": {"destination": "example.invalid", "host": "HOST-X"}},
+            {"event_id": "CASE-X-4", "timestamp": "2026-10-10T09:03:00Z", "source": "filesystem", "kind": "file", "summary": "Archive staged in temp", "details": {"path": "/tmp/archive.zip"}},
+            {"event_id": "CASE-X-5", "timestamp": "2026-10-10T09:04:00Z", "source": "identity", "kind": "session", "summary": "New session issued", "details": {"account": "demo@example.test"}},
+        ]
+        case = {"case_id": "CASE-X", "title": "Custom synthetic case"}
+        evidence = [seal_evidence(event) for event in events]
+        result = investigate_case(case, evidence)
+        titles = {item["title"] for item in result["findings"]}
+        self.assertIn("Unfamiliar successful login", titles)
+        self.assertIn("Unusual process ancestry", titles)
+        self.assertIn("Potentially suspicious network activity", titles)
+        self.assertIn("Possible data staging", titles)
+        self.assertIn("Follow-on identity session", titles)
+        known_ids = {item["evidence_id"] for item in evidence}
+        for item in result["findings"]:
+            self.assertTrue(set(item["evidence_ids"]).issubset(known_ids))
+        self.assertEqual(result["case_id"], "CASE-X")
+        self.assertNotIn("WS-DEMO-04", str(result["response_proposals"]))
+
+    def test_no_matching_rule_is_not_presented_as_a_safety_clearance(self):
+        event = {
+            "event_id": "CUSTOM-1",
+            "timestamp": "2026-10-10T09:00:00Z",
+            "source": "application",
+            "kind": "notice",
+            "summary": "Routine synthetic application event",
+            "details": {"status": "ok"},
+        }
+        result = investigate_case({"case_id": "CUSTOM-CASE"}, [seal_evidence(event)])
+        self.assertEqual(result["findings"][0]["state"], "unverified")
+        self.assertFalse(result["findings"][0]["evidence_available"])
+        self.assertIn("not a safety clearance", result["findings"][0]["explanation"])
+
+    def test_agent_trace_is_grounded_in_current_case_and_discloses_deterministic_mode(self):
+        custom_events = [
+            {
+                "event_id": "TRACE-1",
+                "timestamp": "2026-10-10T09:00:00Z",
+                "source": "identity",
+                "kind": "authentication",
+                "summary": "Successful login from unfamiliar source",
+                "details": {"result": "success", "novel_source": True},
+            },
+            {
+                "event_id": "TRACE-2",
+                "timestamp": "2026-10-10T09:03:00Z",
+                "source": "endpoint",
+                "kind": "process",
+                "summary": "Script launched",
+                "details": {"process": "powershell.exe", "parent": "outlook.exe"},
+            },
+        ]
+        evidence = [seal_evidence(event) for event in custom_events]
+        result = investigate_case({"case_id": "TRACE-CASE"}, evidence)
+
+        self.assertEqual(result["schema_version"], "1.1")
+        self.assertFalse(result["orchestrator"]["model_agents_enabled"])
+        self.assertEqual(result["orchestrator"]["mode"], "bounded_deterministic")
+        self.assertEqual(result["orchestrator"]["agent_count"], len(result["agent_trace"]))
+        self.assertEqual(result["agents"], result["agent_trace"])
+        self.assertEqual(
+            {agent["agent_id"] for agent in result["agent_trace"]},
+            {"evidence_integrity", "evidence_triage", "detection_correlation",
+             "timeline_reconstruction", "verification", "response_planning"},
+        )
+        known_ids = {item["evidence_id"] for item in evidence}
+        for agent in result["agent_trace"]:
+            self.assertEqual(agent["mode"], "deterministic")
+            self.assertTrue(set(agent["evidence_ids"]).issubset(known_ids))
+            self.assertGreaterEqual(agent["inputs"], 0)
+            self.assertGreaterEqual(agent["outputs"], 0)
+        detection = next(a for a in result["agent_trace"] if a["agent_id"] == "detection_correlation")
+        self.assertEqual(detection["outputs"], len([
+            finding for finding in result["findings"]
+            if finding["title"] != "No rule matched — analyst review required"
+        ]))
 
 if __name__ == "__main__":
     unittest.main()

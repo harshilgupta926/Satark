@@ -13,6 +13,8 @@ import json
 import uuid
 from typing import Any
 
+from firstlight_rules import RULE_VERSION, rule_metadata
+
 
 def _canonical(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode("utf-8")
@@ -103,6 +105,110 @@ def verify_evidence(item: dict[str, Any]) -> dict[str, Any]:
         "valid": valid,
         "status": "VERIFIED" if valid else "HASH MISMATCH — POSSIBLE TAMPERING",
     }
+
+
+def prioritize_evidence(evidence: list[dict[str, Any]], now: datetime | None = None) -> list[dict[str, Any]]:
+    """Rank evidence for triage using transparent, deterministic heuristics.
+
+    Scores are workflow hints, not calibrated risk probabilities. An integrity
+    mismatch raises review urgency but never makes the record trustworthy.
+    """
+    if not isinstance(evidence, list):
+        raise ValueError("Evidence must be a list.")
+    current = now or datetime.now(timezone.utc)
+    if not isinstance(current, datetime):
+        raise ValueError("now must be a datetime when supplied.")
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    current = current.astimezone(timezone.utc)
+
+    volatility_terms = {
+        "memory": 35, "process": 30, "connection": 28, "session": 26,
+        "authentication": 24, "login": 24, "network": 22, "identity": 20,
+        "registry": 15, "file": 12, "log": 12,
+    }
+    relevance_terms = (
+        "suspicious", "unusual", "novel", "powershell", "mfa",
+        "forwarding", "archive", "lookalike", "credential", "failed",
+        "unexpected", "malicious",
+    )
+    priorities = []
+    for item in evidence:
+        if not isinstance(item, dict):
+            continue
+        record = item.get("record", {})
+        if not isinstance(record, dict):
+            record = {}
+        evidence_id = str(item.get("evidence_id", "unknown"))
+        kind = str(record.get("kind", "")).lower()
+        source = str(record.get("source", "")).lower()
+        summary = str(record.get("summary", "")).lower()
+        details = record.get("details", {}) if isinstance(record.get("details"), dict) else {}
+        searchable = " ".join((kind, source, summary, str(details.get("rule_id", "")), " ".join(str(group) for group in details.get("rule_groups", []) if isinstance(group, (str, int)))))
+        integrity = verify_evidence(item)
+        reasons = []
+
+        volatility_matches = [(term, points) for term, points in volatility_terms.items()
+                              if term in kind or term in source]
+        volatility_score = max((points for _, points in volatility_matches), default=8)
+        reasons.append(
+            f"Volatility: {max((term for term, points in volatility_matches if points == volatility_score), default='general artifact')} "
+            f"(+{volatility_score})"
+        )
+
+        relevance_score = 20 if any(term in searchable for term in relevance_terms) else 8
+        source_level = details.get("rule_level")
+        if details.get("provider") == "wazuh-indexer" and isinstance(source_level, (int, str)) and not isinstance(source_level, bool):
+            try:
+                parsed_level = int(source_level)
+            except (TypeError, ValueError):
+                parsed_level = -1
+            if 0 <= parsed_level <= 16:
+                relevance_score = max(relevance_score, 25 if parsed_level >= 12 else 20 if parsed_level >= 10 else 15 if parsed_level >= 7 else 8)
+                reasons.append(f"Wazuh source rule level {parsed_level} (vendor severity context, not a probability)")
+        reasons.append(f"Investigation relevance heuristic (+{relevance_score})")
+
+        if integrity["valid"]:
+            integrity_score = 10
+            reasons.append("Stored digest matches (+10)")
+            next_step = "Preserve the source snapshot and corroborate with independent logs."
+        else:
+            integrity_score = 25
+            reasons.append("Integrity mismatch or malformed baseline (+25 review urgency)")
+            next_step = "Quarantine from trusted conclusions; compare with a protected baseline and re-collect if possible."
+
+        recency_score = 0
+        timestamp = record.get("timestamp")
+        try:
+            observed = datetime.fromisoformat(str(timestamp).replace("Z", "+00:00"))
+            if observed.tzinfo is None:
+                observed = observed.replace(tzinfo=timezone.utc)
+            age_minutes = (current - observed.astimezone(timezone.utc)).total_seconds() / 60
+            if 0 <= age_minutes <= 15:
+                recency_score = 15
+            elif 0 <= age_minutes <= 60:
+                recency_score = 12
+            elif 0 <= age_minutes <= 360:
+                recency_score = 8
+            elif 0 <= age_minutes <= 1440:
+                recency_score = 4
+            if recency_score:
+                reasons.append(f"Recent source timestamp (+{recency_score})")
+        except (TypeError, ValueError, OverflowError):
+            pass
+
+        score = min(100, volatility_score + relevance_score + integrity_score + recency_score)
+        level = "critical" if score >= 75 else "high" if score >= 55 else "medium" if score >= 35 else "low"
+        priorities.append({
+            "evidence_id": evidence_id,
+            "priority": level,
+            "priority_score": score,
+            "integrity": integrity["status"],
+            "reasons": reasons,
+            "recommended_next_step": next_step,
+        })
+
+    return sorted(priorities, key=lambda row: (-row["priority_score"], row["evidence_id"]))
 
 
 def _timeline_sort_key(value: Any) -> datetime:
@@ -200,11 +306,172 @@ def investigate_case(case: dict[str, Any], evidence: list[dict[str, Any]]) -> di
             "state": "supported" if valid_refs else "unverified",
         })
 
-    finding("F-001", "Unfamiliar successful login", "The synthetic identity event marks the source as novel. This is an investigation lead, not proof that the login was malicious.", "high", ["EV-001"], "medium")
-    finding("F-002", "Unusual process ancestry", "A script interpreter is recorded with an email client as its parent. Correlate with endpoint telemetry before concluding execution intent.", "high", ["EV-002"], "medium")
-    finding("F-003", "Network activity after suspicious process", "A test-domain connection follows the process event in the supplied timeline. The relationship is temporal correlation, not proof of causation.", "medium", ["EV-002", "EV-003"], "medium")
-    finding("F-004", "Possible data staging", "A temporary archive is recorded. Its contents and transfer status are not established by this artifact alone.", "medium", ["EV-004"], "low")
-    finding("F-005", "Follow-on identity session", "A second session appears after the unfamiliar login. Confirm session provenance and revoke only through an authorized response workflow.", "medium", ["EV-001", "EV-005"], "medium")
+    # Derive findings from the supplied records rather than assuming demo IDs.
+    # These are explainable triage heuristics, not proof of malicious activity.
+    valid_records = {
+        str(item.get("evidence_id")): item.get("record", {})
+        for item in evidence
+        if item.get("evidence_id") is not None and verify_evidence(item)["valid"]
+        and isinstance(item.get("record"), dict)
+    }
+    next_finding = 1
+
+    def add_rule_finding(title: str, explanation: str, severity: str, refs: list[str], confidence: str) -> None:
+        nonlocal next_finding
+        finding(f"F-{next_finding:03d}", title, explanation, severity, refs, confidence)
+        findings[-1].update(rule_metadata(title))
+        next_finding += 1
+
+    records = [(eid, record) for eid, record in valid_records.items()]
+    for evidence_id, record in records:
+        kind = str(record.get("kind", "")).lower()
+        source = str(record.get("source", "")).lower()
+        summary = str(record.get("summary", "")).lower()
+        details = record.get("details", {})
+        details = details if isinstance(details, dict) else {}
+        groups = details.get("rule_groups", [])
+        groups_text = " ".join(str(group).lower() for group in groups if isinstance(group, (str, int))) if isinstance(groups, list) else ""
+        searchable = " ".join((kind, source, summary, str(details.get("rule", "")).lower(), str(details.get("rule_id", "")).lower(), groups_text))
+        success = str(details.get("result", "")).lower() in {"success", "successful", "succeeded"}
+
+        raw_wazuh_level = details.get("rule_level")
+        if details.get("provider") == "wazuh-indexer" and isinstance(raw_wazuh_level, (int, str)) and not isinstance(raw_wazuh_level, bool):
+            try:
+                wazuh_level = int(raw_wazuh_level)
+            except (TypeError, ValueError):
+                wazuh_level = -1
+            if 7 <= wazuh_level <= 16:
+                severity = "critical" if wazuh_level >= 12 else "high" if wazuh_level >= 10 else "medium"
+                add_rule_finding(
+                    "Wazuh source detection alert",
+                    f"The Wazuh Indexer record carries source rule level {wazuh_level}. This preserves the source detector's severity context; it is not an independently calibrated probability or proof of compromise. Corroborate the underlying event and host context.",
+                    severity, [evidence_id], "medium" if wazuh_level >= 10 else "low",
+                )
+
+        if (kind in {"authentication", "login", "sign_in"} or "login" in searchable or "sign-in" in searchable) and (
+            details.get("novel_source") is True
+            or any(term in searchable for term in ("new source", "new browser", "new device", "new location", "unfamiliar"))
+        ) and (success or "successful" in searchable):
+            add_rule_finding(
+                "Unfamiliar successful login",
+                "The source record describes a successful login in a new or unfamiliar context. This is an investigation lead, not proof of account compromise.",
+                "high", [evidence_id], "medium",
+            )
+
+        if any(term in searchable for term in ("forwarding rule", "mailbox rule", "inbox forwarding", "mail forwarding")):
+            add_rule_finding(
+                "Mailbox forwarding or rule change",
+                "The supplied record describes a mailbox forwarding or rule change. Verify the rule owner, destination, and authorization independently.",
+                "high", [evidence_id], "medium",
+            )
+
+        if any(term in searchable for term in ("mfa", "multi-factor", "authentication settings", "authentication method changed")):
+            add_rule_finding(
+                "Authentication setting changed",
+                "The supplied record describes an authentication-setting change. Verify whether it was authorized and whether recovery methods were affected.",
+                "high", [evidence_id], "medium",
+            )
+
+        if kind in {"message", "email", "mail"} and any(term in searchable for term in ("lookalike", "urgent", "password", "otp", "credential")):
+            add_rule_finding(
+                "Social-engineering indicators",
+                "The message summary includes urgency, lookalike-domain, or credential-request language. Verify sender and destination independently; wording alone is not proof of phishing.",
+                "medium", [evidence_id], "low",
+            )
+
+        if kind == "process" and any(term in searchable for term in ("suspicious attachment", "suspicious process", "attachment path")):
+            add_rule_finding(
+                "Potentially suspicious endpoint activity",
+                "The supplied summary describes a potentially suspicious process or attachment path. This workflow does not inspect the actual process or file.",
+                "medium", [evidence_id], "low",
+            )
+
+        parent = str(details.get("parent", "")).lower()
+        process = str(details.get("process", "")).lower()
+        unusual_parent = any(term in parent for term in ("outlook", "winword", "excel", "browser", "email"))
+        script_process = any(term in process for term in ("powershell", "wscript", "cscript", "cmd.exe", "bash", "python"))
+        if kind == "process" and (details.get("rule") == "unusual_parent_child" or (unusual_parent and script_process)):
+            add_rule_finding(
+                "Unusual process ancestry",
+                "The source records a script-capable process with a potentially unusual parent or rule match. Correlate with endpoint telemetry before inferring intent.",
+                "high", [evidence_id], "medium",
+            )
+
+        destination = str(details.get("destination", "")).lower()
+        if kind in {"connection", "network"} and (
+            "suspicious" in searchable or details.get("disposition") == "suspicious"
+            or destination.endswith(".invalid")
+        ):
+            related = [evidence_id]
+            host = details.get("host")
+            current_time = _timeline_sort_key(record.get("timestamp"))
+            prior_processes = [
+                (eid, other) for eid, other in records
+                if eid != evidence_id
+                and str(other.get("kind", "")).lower() == "process"
+                and isinstance(other.get("details"), dict)
+                and (not host or other["details"].get("host") == host)
+                and _timeline_sort_key(other.get("timestamp")) <= current_time
+            ]
+            prior_processes.sort(key=lambda pair: _timeline_sort_key(pair[1].get("timestamp")))
+            if prior_processes:
+                related.insert(0, prior_processes[-1][0])
+            add_rule_finding(
+                "Potentially suspicious network activity",
+                "The record contains a suspicious-destination signal. Any link to earlier process activity is temporal correlation, not proof of causation; verify destination context independently.",
+                "medium", related, "low" if len(related) == 1 else "medium",
+            )
+
+        path = str(details.get("path", "")).lower()
+        if kind in {"file", "filesystem"} and (
+            any(term in path for term in (".zip", ".7z", ".rar", ".tar", ".gz"))
+            or any(term in searchable for term in ("archive", "staging", "staged"))
+            or "temp" in path
+        ):
+            add_rule_finding(
+                "Possible data staging",
+                "A file or archive-like artifact may indicate staging. The artifact alone does not establish its contents, purpose, or transfer.",
+                "medium", [evidence_id], "low",
+            )
+
+        if kind == "session" or "session" in searchable:
+            account = details.get("account")
+            current_time = _timeline_sort_key(record.get("timestamp"))
+            prior_auth = [
+                (eid, other) for eid, other in records
+                if eid != evidence_id
+                and str(other.get("kind", "")).lower() in {"authentication", "login"}
+                and isinstance(other.get("details"), dict)
+                and (not account or other["details"].get("account") == account)
+                and _timeline_sort_key(other.get("timestamp")) <= current_time
+            ]
+            prior_auth.sort(key=lambda pair: _timeline_sort_key(pair[1].get("timestamp")))
+            if prior_auth:
+                add_rule_finding(
+                    "Follow-on identity session",
+                    "A session record follows an authentication event for the same account or an unspecified account. Confirm session provenance before taking action.",
+                    "medium", [prior_auth[-1][0], evidence_id], "medium",
+                )
+
+    if not findings:
+        # Make the absence of a matching heuristic explicit rather than
+        # implying the case is safe or inventing a positive finding.
+        findings.append({
+            "finding_id": "F-001",
+            "title": "No rule matched — analyst review required",
+            "explanation": "The supplied evidence did not match the current deterministic triage rules. This is not a safety clearance; review the source records and add case-specific checks as needed.",
+            "severity": "info",
+            "evidence_ids": [],
+            "evidence_available": False,
+            "confidence": "low",
+            "state": "unverified",
+            "rule_id": "FL-GENERIC-000",
+            "rule_version": RULE_VERSION,
+            "rule_source": "FIRSTLIGHT",
+            "attack_techniques": [],
+            "logic_type": "no_rule_match",
+            "rule_limitations": ["No detection rule matched; this is not a clearance that the system or case is safe."],
+        })
 
     timeline = []
     for item in evidence:
@@ -221,27 +488,116 @@ def investigate_case(case: dict[str, Any], evidence: list[dict[str, Any]]) -> di
         })
     timeline.sort(key=lambda event: _timeline_sort_key(event["timestamp"]))
 
+    # Keep limitations tied to the supplied case, not to the demo scenario.
+    valid_kinds = {str(record.get("kind", "")).lower() for _, record in records}
+    gaps = ["Only supplied artifacts were reviewed; no live endpoint or identity collection was performed."]
+    if not ({"memory", "process_snapshot"} & valid_kinds):
+        gaps.append("No memory image or live process snapshot is included in the supplied evidence.")
+    has_archive = any(
+        str(record.get("kind", "")).lower() in {"file", "filesystem"}
+        and any(term in str(record.get("summary", "")).lower() for term in ("archive", "staging", "staged"))
+        for _, record in records
+    )
+    if has_archive:
+        gaps.append("Archive contents and any successful transfer are not established by these records.")
+    if any(str(record.get("kind", "")).lower() in {"connection", "network"} for _, record in records):
+        gaps.append("Network destination reputation was not independently verified by this workflow.")
+
+    evidence_priorities = prioritize_evidence(evidence)
+    response_proposals = [
+        {"action_id": "ACT-001", "title": f"Preserve evidence for case {case_id}", "impact": "Would mark evidence-preservation as approved in the simulator only; no files are changed.", "risk": "low", "status": "pending"},
+        {"action_id": "ACT-002", "title": "Review and contain affected assets", "impact": "Analyst must identify and confirm an exact target before any real response; this prototype only records a simulated decision.", "risk": "high", "status": "pending"},
+        {"action_id": "ACT-003", "title": "Review identity sessions and access", "impact": "Analyst must verify the account and business impact; this prototype does not revoke real sessions.", "risk": "high", "status": "pending"},
+    ]
+    matched_findings = [
+        item for item in findings
+        if item.get("title") != "No rule matched — analyst review required"
+    ]
+    referenced_ids = sorted({
+        evidence_id
+        for item in findings
+        for evidence_id in item.get("evidence_ids", [])
+    })
+    agent_trace = [
+        {
+            "agent_id": "evidence_integrity",
+            "name": "Evidence Integrity Agent",
+            "mode": "deterministic",
+            "status": "completed",
+            "inputs": len(evidence),
+            "outputs": len(valid_ids),
+            "evidence_ids": list(valid_ids),
+            "summary": f"Checked {len(evidence)} supplied records; {len(valid_ids)} matched their sealed hash and identity.",
+        },
+        {
+            "agent_id": "evidence_triage",
+            "name": "Evidence Triage Agent",
+            "mode": "deterministic",
+            "status": "completed",
+            "inputs": len(evidence),
+            "outputs": len(evidence_priorities),
+            "evidence_ids": [item["evidence_id"] for item in evidence_priorities],
+            "summary": "Ranked supplied records using transparent volatility, relevance, recency and integrity heuristics; scores are not probabilities.",
+        },
+        {
+            "agent_id": "detection_correlation",
+            "name": "Detection & Correlation Agent",
+            "mode": "deterministic",
+            "status": "completed",
+            "inputs": len(valid_records),
+            "outputs": len(matched_findings),
+            "evidence_ids": referenced_ids,
+            "summary": f"Produced {len(matched_findings)} rule-backed investigation lead(s) from integrity-verified records; temporal links do not prove causation.",
+        },
+        {
+            "agent_id": "timeline_reconstruction",
+            "name": "Timeline Reconstruction Agent",
+            "mode": "deterministic",
+            "status": "completed",
+            "inputs": len(evidence),
+            "outputs": len(timeline),
+            "evidence_ids": [item["event_id"] for item in timeline if item.get("evidence_ids")],
+            "summary": f"Ordered {len(timeline)} supplied events by source timestamp; records with invalid integrity remain visible but untrusted.",
+        },
+        {
+            "agent_id": "verification",
+            "name": "Verification & Gap Agent",
+            "mode": "deterministic",
+            "status": "completed",
+            "inputs": len(findings),
+            "outputs": sum(bool(item.get("evidence_ids")) for item in findings),
+            "evidence_ids": referenced_ids,
+            "summary": f"Checked evidence references and recorded {len(gaps)} explicit evidence gap(s); unsupported claims remain unverified.",
+        },
+        {
+            "agent_id": "response_planning",
+            "name": "Response Planning Agent",
+            "mode": "deterministic",
+            "status": "completed",
+            "inputs": len(findings),
+            "outputs": len(response_proposals),
+            "evidence_ids": referenced_ids,
+            "summary": "Prepared reviewable proposals only. Approval records a simulation and never executes a real response action.",
+        },
+    ]
     return {
+        "schema_version": "1.1",
         "case_id": case_id,
-        "orchestrator": {"status": "completed", "strategy": "Preserve → detect → correlate → verify → propose response"},
-        "agents": [
-            {"name": "Evidence Agent", "status": "completed", "summary": f"Reviewed {len(evidence)} evidence records; {len(valid_ids)} passed integrity verification."},
-            {"name": "Detection Agent", "status": "completed", "summary": "Applied deterministic checks to synthetic identity, process, network and file events."},
-            {"name": "Correlation Agent", "status": "completed", "summary": "Ordered events by source timestamps and linked temporally related activity."},
-            {"name": "Verification Agent", "status": "completed", "summary": "Attached evidence IDs to findings and labelled inference and unknowns explicitly."},
-        ],
+        "orchestrator": {
+            "status": "completed",
+            "mode": "bounded_deterministic",
+            "strategy": "Preserve → triage → detect/correlate → reconstruct → verify → propose response",
+            "agent_count": len(agent_trace),
+            "model_agents_enabled": False,
+            "note": "Named stages are deterministic workflow agents in this prototype, not independent LLM agents.",
+        },
+        "agents": agent_trace,
+        "agent_trace": agent_trace,
         "findings": findings,
+        "evidence_priorities": evidence_priorities,
         "timeline": timeline,
-        "gaps": [
-            "No memory image or live process snapshot is included in this synthetic case.",
-            "The archive contents and any successful exfiltration are not established.",
-            "Network destination reputation is simulated and has not been queried externally.",
-        ],
-        "response_proposals": [
-            {"action_id": "ACT-001", "title": "Isolate simulated endpoint WS-DEMO-04", "impact": "Would contain the demo host in the simulator; no real device is affected.", "risk": "high", "status": "pending"},
-            {"action_id": "ACT-002", "title": "Revoke simulated account sessions", "impact": "Would invalidate demo sessions only; verify identity and business impact first.", "risk": "high", "status": "pending"},
-            {"action_id": "ACT-003", "title": "Preserve endpoint and identity logs", "impact": "Retain additional artifacts before containment where feasible.", "risk": "low", "status": "pending"},
-        ],
+        "gaps": gaps,
+        "response_proposals": response_proposals,
     }
 
 

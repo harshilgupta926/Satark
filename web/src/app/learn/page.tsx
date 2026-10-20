@@ -22,7 +22,7 @@ export default function LearnPage() {
     <main className="shell">
       <SiteHeader />
       <div className="container subpage" id="main-content" tabIndex={-1}>
-        <div className="eyebrow">SECURITY AWARENESS / PRACTICE</div>
+        <div className="eyebrow">Practice</div>
         <h1>Pause. Verify. Then act.</h1>
         <p className="lead">Practice spotting common social-engineering patterns. This short quiz is educational and does not certify a message as safe or malicious.</p>
         <div className="quiz-progress" aria-live="polite">
@@ -51,7 +51,7 @@ export default function LearnPage() {
           </section>
         ))}
         {checked && <section className="quiz-score" aria-live="polite">
-          <span className="eyebrow">YOUR RESULT</span>
+          <span className="eyebrow">Your result</span>
           <h2>{correctCount} / {questions.length} correct</h2>
           <p>{answeredCount < questions.length ? `You answered ${answeredCount} of ${questions.length}. Unanswered questions are not counted as correct.` : correctCount === questions.length ? 'Great work. Keep verifying claims through trusted channels.' : 'Review the explanations above, then try again to reinforce the safest response.'}</p>
         </section>}
@@ -60,10 +60,10 @@ export default function LearnPage() {
           <button className="btn btn-secondary" type="button" onClick={() => { setAnswers({}); setChecked(false); }}>Reset quiz</button>
         </div>
         <section className="form-panel code-demo" aria-labelledby="code-demo-title">
-          <div className="eyebrow">INTERACTION SANDBOX</div>
+          <div className="eyebrow">Interaction sandbox</div>
           <h2 id="code-demo-title">Try the animated code entry.</h2>
           <p>This is a visual component demo only. It does not verify identity, send a code, or protect an account.</p>
-          <CodeSlots length={6} value={demoCode} status={demoCodeStatus} onChange={(code) => { setDemoCode(code); setDemoCodeStatus('idle'); }} onComplete={() => setDemoCodeStatus('success')} accentColor="#c9f36b" inkColor="#c9f36b" slotColor="#171e2a" digitColor="#11170a" dangerColor="#ff7474" slotSize={42} gap={7} radius={11} ariaLabel="Demo code entry" />
+          <CodeSlots length={6} value={demoCode} status={demoCodeStatus} onChange={(code) => { setDemoCode(code); setDemoCodeStatus('idle'); }} onComplete={() => setDemoCodeStatus('success')} accentColor="#c4b5fd" inkColor="#c4b5fd" slotColor="#18181b" digitColor="#1c1325" dangerColor="#fb7185" slotSize={42} gap={7} radius={11} ariaLabel="Demo code entry" />
           <div className="hint" aria-live="polite">{demoCodeStatus === 'success' ? 'Demo interaction complete — reset to try it again.' : 'Enter any six digits to preview the success state.'}</div>
           {demoCodeStatus === 'success' && <button className="btn btn-secondary" type="button" onClick={() => { setDemoCode(''); setDemoCodeStatus('idle'); }}>Reset code demo</button>}
         </section>

@@ -113,7 +113,7 @@ export default function ReportsPage() {
     <main className="shell">
       <SiteHeader />
       <div className="container subpage" id="main-content" tabIndex={-1}>
-        <div className="eyebrow">WORKSPACE / REPORTS</div>
+        <div className="eyebrow">Reports</div>
         <h1>Keep the reasoning reviewable.</h1>
         <p className="lead">Draft and export review notes locally, or save an immutable report snapshot against a persistent case when signed in.</p>
         <section className="form-panel" aria-labelledby="notes-title">

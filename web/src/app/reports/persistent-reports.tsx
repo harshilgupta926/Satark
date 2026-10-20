@@ -76,7 +76,7 @@ export default function PersistentReports({notes,analysis}:{notes:string;analysi
   }
 
   return <section className="form-panel persistent-reports" aria-labelledby="persistent-reports-title">
-    <div className="panel-heading"><div><div className="panel-kicker">SERVER-SAVED REPORTS</div><h2 id="persistent-reports-title">Reproducible snapshots</h2></div><span className={session?'safe-chip':'review-chip'}>{session?'AUTHENTICATED':'LOCAL ONLY'}</span></div>
+    <div className="panel-heading"><div><div className="panel-kicker">Server-saved reports</div><h2 id="persistent-reports-title">Reproducible snapshots</h2></div><span className={session?'safe-chip':'review-chip'}>{session?'Authenticated':'Local only'}</span></div>
     {!session?<p className="empty-state">Sign in to save reports against persistent cases. <a href="/login">Open workspace access →</a></p>:!tenant?<p className="empty-state">No workspace membership is available. <a href="/login">Create a workspace →</a></p>:<>
       <p className="hint">Workspace: {tenant.name}. Each saved report is an immutable snapshot with a server-generated SHA-256 digest.</p>
       <label className="field-label" htmlFor="report-case-select">Attach report to case</label>

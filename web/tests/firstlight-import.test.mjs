@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCsv, parseIsoTimestamp } from '../src/lib/firstlight-import.mjs';
+import { parseCsv, parseIsoTimestamp, toggleSimulatedTamper } from '../src/lib/firstlight-import.mjs';
 
 test('accepts explicit ISO-8601 timestamps and normalizes them to UTC', () => {
   assert.equal(parseIsoTimestamp('2026-10-11T10:00:00Z'), '2026-10-11T10:00:00.000Z');
@@ -66,4 +66,13 @@ test('rejects records with more cells than the header', () => {
 test('rejects header-only CSV and unsupported headers', () => {
   assert.throws(() => parseCsv('id,summary'), /header and at least one event row/i);
   assert.throws(() => parseCsv('name,notes\na,b'), /must include event fields/i);
+});
+
+test('restoring a simulated tamper removes exactly the marker it added', () => {
+  const original = 'Successful sign-in from a new browser profile.';
+  const tampered = toggleSimulatedTamper(original, false);
+  assert.equal(tampered, original + ' [SIMULATED TAMPER]');
+  assert.equal(toggleSimulatedTamper(tampered, true), original, 'restore must return the original summary byte-for-byte');
+  assert.equal(toggleSimulatedTamper(tampered, false), tampered, 'tampering twice must not stack markers');
+  assert.equal(toggleSimulatedTamper(original, true), original, 'restoring an untouched summary is a no-op');
 });

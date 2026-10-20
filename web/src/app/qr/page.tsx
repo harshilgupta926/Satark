@@ -2,9 +2,10 @@
 
 import SiteHeader from '../site-header';
 import { useState } from 'react';
+import jsQR from 'jsqr';
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
-const MAX_PIXELS = 40_000_000;
+const MAX_PIXELS = 12_000_000;
 
 type DetectedBarcode = { rawValue: string; format?: string };
 type BarcodeDetectorLike = { detect(source: ImageBitmap): Promise<DetectedBarcode[]> };
@@ -46,6 +47,7 @@ export default function QrPage() {
   const [payloads, setPayloads] = useState<string[]>([]);
   const [analyses, setAnalyses] = useState<Record<string, LocalAnalysis>>({});
   const [notice, setNotice] = useState('');
+  const [copyNotice, setCopyNotice] = useState('');
 
   async function decode() {
     setError('');
@@ -57,26 +59,68 @@ export default function QrPage() {
     if (file.size > MAX_FILE_BYTES) { setError('Image exceeds the 10 MiB processing limit.'); return; }
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { setError('Use a JPEG, PNG or WebP image.'); return; }
     const Detector = getDetector();
-    if (!Detector) {
-      setError('This browser does not provide a native QR decoder. Use a browser with BarcodeDetector support. Your file has not been uploaded.');
-      return;
-    }
 
     setBusy(true);
     let bitmap: ImageBitmap | null = null;
     try {
       bitmap = await createImageBitmap(file);
-      if (bitmap.width * bitmap.height > MAX_PIXELS) throw new Error('Image dimensions exceed the 40-million-pixel processing limit.');
-      const detector = new Detector({ formats: ['qr_code'] });
-      const results = await detector.detect(bitmap);
-      const values = [...new Set(results.map(item => item.rawValue.trim()).filter(Boolean))];
+      if (bitmap.width * bitmap.height > MAX_PIXELS) throw new Error('Image dimensions exceed the 12-million-pixel processing limit.');
+
+      let values: string[] = [];
+      let usedFallback = false;
+      if (Detector) {
+        try {
+          const detector = new Detector({ formats: ['qr_code'] });
+          const results = await detector.detect(bitmap);
+          values = results.map(item => item.rawValue.trim()).filter(Boolean);
+        } catch {
+          // Native decoding differs across browsers and image formats. Fall through
+          // to the bundled decoder instead of making browser support a hard blocker.
+          usedFallback = true;
+        }
+      } else {
+        usedFallback = true;
+      }
+
+      if (!values.length) {
+        usedFallback = true;
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        if (!context) throw new Error('This browser could not prepare the image for local decoding.');
+        context.drawImage(bitmap, 0, 0);
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+        const fallback = jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: 'attemptBoth' });
+        values = fallback?.data.trim() ? [fallback.data.trim()] : [];
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+
+      values = [...new Set(values.filter(Boolean))];
       if (!values.length) setNotice('No QR payload was decoded. This does not mean the image or any embedded destination is safe.');
-      else { setPayloads(values); setNotice('Decoded locally in your browser. SATARK did not upload the image or open the payload.'); }
+      else {
+        setPayloads(values);
+        setNotice(usedFallback
+          ? 'Decoded locally with the bundled cross-browser decoder. SATARK did not upload the image or open the payload.'
+          : 'Decoded locally with the browser decoder. SATARK did not upload the image or open the payload.');
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not decode this image.');
     } finally {
       bitmap?.close();
       setBusy(false);
+    }
+  }
+
+  async function copyPayload(payload: string) {
+    setCopyNotice('');
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard access is unavailable in this browser.');
+      await navigator.clipboard.writeText(payload);
+      setCopyNotice('Payload copied to clipboard.');
+    } catch {
+      setCopyNotice('Could not access the clipboard. Select and copy the payload text above instead.');
     }
   }
 
@@ -116,13 +160,13 @@ export default function QrPage() {
     <main className="shell">
       <SiteHeader />
       <div className="container subpage" id="main-content" tabIndex={-1}>
-        <div className="eyebrow">WORKSPACE / QR INVESTIGATION</div>
+        <div className="eyebrow">QR investigation</div>
         <h1>Decode first. Inspect locally.</h1>
         <p className="lead">QR decoding happens in your browser. If a decoded value is an HTTP/HTTPS URL, SATARK can inspect the URL text with its local analysis engine without visiting the destination or calling a third-party API.</p>
         <section className="panel" aria-labelledby="upload-heading">
-          <div className="eyebrow">LOCAL PROCESSING</div>
+          <div className="eyebrow">Local processing</div>
           <h2 id="upload-heading">Choose a QR-code image</h2>
-          <p>JPEG, PNG or WebP · maximum 10 MiB · maximum 40 million pixels. Native decoder support varies by browser.</p>
+          <p>JPEG, PNG or WebP · maximum 10 MiB · maximum 12 million pixels. Native decoding uses a bundled local fallback on unsupported browsers.</p>
           <label className="field-label" htmlFor="qr-image">QR image</label>
           <input id="qr-image" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { setFile(event.target.files?.[0] ?? null); setError(''); setAnalysisError(''); setNotice(''); setPayloads([]); setAnalyses({}); }} />
           {file && <p className="muted">{file.name} · {(file.size / 1024).toFixed(1)} KiB</p>}
@@ -134,7 +178,7 @@ export default function QrPage() {
         </section>
         {payloads.length > 0 && (
           <section className="panel" aria-labelledby="results-heading">
-            <div className="eyebrow">OBSERVATIONS · NOT A VERDICT</div>
+            <div className="eyebrow">Observations · not a verdict</div>
             <h2 id="results-heading">Decoded payloads</h2>
             {payloads.map((payload, index) => {
               const classification = classifyPayload(payload);
@@ -145,9 +189,10 @@ export default function QrPage() {
                   <pre className="code-output">{payload}</pre>
                   <p>{classification.note}</p>
                   <div className="actions">
-                    <button className="btn btn-secondary" type="button" onClick={() => { void navigator.clipboard?.writeText(payload).catch(() => undefined); }}>Copy payload</button>
+                    <button className="btn btn-secondary" type="button" onClick={() => { void copyPayload(payload); }}>Copy payload</button>
                     {classification.isWebUrl && <button className="btn btn-primary" type="button" disabled={analyzingPayload !== null} onClick={() => { void analyzePayload(payload); }}>{analyzingPayload === payload ? 'Inspecting locally…' : analysis ? 'Run local inspection again' : 'Inspect URL locally'}</button>}
                   </div>
+                  {copyNotice && <p role="status" className="export-feedback">{copyNotice}</p>}
                   {analysisError && analyzingPayload === null && <p role="alert" className="error-message">{analysisError}</p>}
                   {analysis && <section className="analysis-result" aria-live="polite" aria-label="Local URL inspection result">
                     <div className="result-top"><span className="pill">{analysis.threat_category}</span><strong>Heuristic priority: {analysis.risk_score}/100</strong></div>
@@ -168,7 +213,7 @@ export default function QrPage() {
         <section className="panel">
           <h2>Local-only guarantees and limits</h2>
           <ul>
-            <li>The image is decoded in the browser and is not uploaded by this page.</li>
+            <li>The image is decoded in your browser using the native decoder when available and a bundled pure-JavaScript fallback otherwise; the image is not uploaded by this page.</li>
             <li>URL inspection calls SATARK's own local analysis route; no third-party reputation or AI API is required.</li>
             <li>Optional local-model enhancement works only if a local Ollama service is installed and configured.</li>
             <li>This page does not fetch or execute the decoded destination and cannot guarantee detection across all browsers.</li>

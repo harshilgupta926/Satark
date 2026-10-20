@@ -7,7 +7,7 @@
 
 SATARK Sentinel is a security-awareness and incident-investigation prototype built around **FIRSTLIGHT Incident Command**. Its web analysis defaults to local deterministic checks and can optionally use a self-hosted Ollama model. The default analysis path requires no third-party AI API key and does not send submitted content to external threat-intelligence APIs. The goal is to help a person move from scattered signals to a structured, reviewable picture of what may have happened—without presenting a heuristic score as a verdict.
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Open%20SATARK-111827?logo=vercel&logoColor=white)](https://satark-qzym.vercel.app/)
+[![Production smoke](https://github.com/kaustubhdua/Satark/actions/workflows/production-smoke.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/production-smoke.yml)
 [![CI](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/kaustubhdua/Satark/actions/workflows/codeql.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/codeql.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
@@ -19,7 +19,7 @@ SATARK Sentinel is a security-awareness and incident-investigation prototype bui
 
 ---
 
-> **Prototype and safety boundary:** SATARK is a learning and triage aid, not an antivirus, certified forensic product, or proof that content is safe or malicious. FIRSTLIGHT's demo incident is synthetic. Optional Microsoft Defender/Entra response adapters are opt-in, require tenant credentials and explicit target-bound confirmation, and have not been live-validated or connected to the current simulated approval UI. The session-based audit chain is not independently anchored chain-of-custody evidence. Use synthetic or public, non-sensitive data in the current demo.
+> **Prototype and safety boundary:** SATARK is a learning and triage aid, not an antivirus, certified forensic product, or proof that content is safe or malicious. The verified Vercel production alias is `https://satark-rose.vercel.app`; the production smoke workflow uses it by default and allows the repository Actions variable `SATARK_PRODUCTION_URL` to override it if the domain changes. A passing smoke run is still required before calling the deployment release-ready. FIRSTLIGHT's demo incident is synthetic. Optional Microsoft Defender/Entra response adapters are opt-in, require tenant credentials and explicit target-bound confirmation, and have not been live-validated or connected to the current simulated approval UI. The session-based audit chain is not independently anchored chain-of-custody evidence. Use synthetic or public, non-sensitive data in the current demo.
 
 ## Contents
 
@@ -304,6 +304,10 @@ Run the repository's local checks:
 python -m pip check
 python -m compileall -q .
 python -m unittest discover -s tests -v
+cd web
+npm ci
+npm run test:ci
+npm run evaluate:local-analysis
 ~~~
 
 The test suite covers areas including:
@@ -335,14 +339,14 @@ GitHub Actions also runs dependency/compile/test checks, browser smoke and layou
 
 ### Known limitations and release gates
 
-- **No verified authentication/authorization or tenant isolation:** do not use this deployment for confidential multi-user cases.
-- **No durable case/evidence storage:** Streamlit session state is temporary and is not a case-management database.
-- **No independently anchored evidence manifest:** a computed hash is useful for integrity comparison, but provenance and independent custody are separate questions.
-- **Session-scoped audit chain:** FIRSTLIGHT's audit chain is a demonstration, not a durable tamper-evident enterprise audit service.
-- **Process-local rate limiting:** the application limiter is not a distributed/global quota and cannot by itself control usage across replicas or restarts.
-- **Hosting-level controls need verification:** request-body limits, concurrency, execution timeouts, egress restrictions, abuse controls, and cost ceilings must be verified at the deployment layer.
+- **Release verification is still required:** the Next.js web workspace has authenticated persistence APIs and tenant-scoped database policies, but the latest `main` revision has not yet been verified on the production alias. Do not use the live deployment for confidential multi-user cases until the exact deployed SHA, production smoke tests, and isolated authorization tests pass.
+- **Legacy Streamlit session state is temporary:** the older Streamlit experience is not a durable case-management database. Use the Next.js web workspace for the persistent Supabase-backed case/evidence/findings/reports workflow, subject to the release gates above.
+- **Evidence provenance is not independently anchored:** SHA-256 hashes support integrity comparison, but they do not by themselves prove original source, collection procedure, or independent chain of custody.
+- **Audit boundaries differ by workflow:** FIRSTLIGHT's demo/session audit trail is not an enterprise audit service. The web database has persistent hash-chained audit records, but production policy consistency and end-to-end verification still require successful isolated and deployed tests.
+- **Shared rate limiting must be verified:** Vercel analysis fails closed without a working Upstash Redis REST configuration. Process-local limits are for local development only and are not a distributed/global quota.
+- **Hosting-level controls need verification:** request-body limits, concurrency, execution timeouts, egress restrictions, abuse controls, monitoring and cost ceilings must be verified at the deployment layer.
 - **Local model checks need target-environment validation:** model success, timeout, missing weights, malformed output, and deterministic fallback must be tested on the actual hardware.
-- **Detection quality has not been benchmarked:** precision, recall, false-positive rate, evidence-grounding quality, and latency require a defined dataset and repeatable evaluation.
+- **Detection quality remains uncalibrated:** a repeatable 12-case synthetic corpus now reports precision, recall, F1, latency and a limited evidence-grounding check. These metrics are regression diagnostics only, not representative real-world detection rates.
 - **Local model privacy review remains necessary:** secure model logs, cache directories, uploaded evidence, retention/deletion behavior, and incident ownership before handling real user data.
 - **Not a malware sandbox or certified forensic platform:** the app does not execute suspicious files in an isolated environment or guarantee exhaustive inspection.
 
@@ -363,8 +367,8 @@ The following is a forward-looking roadmap, not a claim that every item is imple
 - [ ] Keep the README, architecture notes, demo flow, and release sign-off aligned with the actual code.
 
 ### Next: stronger investigation workflow
-- [ ] Design durable case and evidence storage with explicit retention/deletion behavior.
-- [ ] Add authenticated access and authorization/tenant-isolation boundaries before multi-user sensitive use.
+- [ ] Complete end-to-end production verification of the existing Supabase-backed case/evidence/findings/reports workflow, including retention/deletion behavior.
+- [ ] Finish and pass cross-tenant authorization/storage regression tests, then verify the same policies on the deployed release before multi-user sensitive use.
 - [ ] Design independently verifiable evidence manifests and durable audit records.
 - [ ] Add clear case lifecycle, export validation, and audit verification UX.
 - [ ] Measure investigation usefulness with a repeatable synthetic dataset and human-reviewed rubric.

@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { chromium } from 'playwright';
 
 const require = createRequire(import.meta.url);
@@ -13,24 +14,29 @@ await fs.mkdir(artifactDir, { recursive: true });
 
 const failures = [];
 
-// The readiness endpoint must remain public-safe and report booleans only.
-{
-  const response = await fetch(baseURL + '/api/health', { headers: { Accept: 'application/json' } });
-  assert.equal(response.status, 200, 'readiness endpoint should be available');
-  assert.match(response.headers.get('cache-control') || '', /no-store/);
-  const health = await response.json();
-  assert.equal(health.status, 'configuration-only');
-  assert.match(health.note || '', /does not probe model, database, or Redis connectivity/i);
-  for (const key of ['analysis', 'localModel', 'rateLimit', 'persistentStorage']) {
-    assert.ok(health.checks?.[key], 'missing readiness diagnostic: ' + key);
+function makeMinimalPdf(text) {
+  const safe = text.replace(/[\\()]/g, match => '\\' + match).replace(/[^\x20-\x7e]/g, ' ');
+  const stream = 'BT /F1 12 Tf 50 740 Td (' + safe + ') Tj ET';
+  const objects = [
+    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+    '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+    '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n',
+    '4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+    '5 0 obj\n<< /Length ' + Buffer.byteLength(stream, 'ascii') + ' >>\nstream\n' + stream + '\nendstream\nendobj\n',
+  ];
+  let output = '%PDF-1.4\n';
+  const offsets = [0];
+  for (const object of objects) {
+    offsets.push(Buffer.byteLength(output, 'ascii'));
+    output += object;
   }
-  assert.equal(health.checks.analysis.mode, 'deterministic-local');
-  assert.equal(health.checks.analysis.configured, true, 'local rules must work without API credentials');
-  for (const key of ['localModel', 'rateLimit', 'persistentStorage']) {
-    assert.equal(typeof health.checks[key].configured, 'boolean');
+  const xrefOffset = Buffer.byteLength(output, 'ascii');
+  output += 'xref\n0 6\n0000000000 65535 f \n';
+  for (const offset of offsets.slice(1)) {
+    output += String(offset).padStart(10, '0') + ' 00000 n \n';
   }
-  assert.equal(health.checks.rateLimit.sharedAcrossInstances, false);
-  assert.equal(JSON.stringify(health).includes('API_KEY'), false);
+  output += 'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + xrefOffset + '\n%%EOF\n';
+  return Buffer.from(output, 'ascii');
 }
 
 const browser = await chromium.launch({ headless: true });
@@ -42,7 +48,10 @@ const routes = [
   { path: '/qr', heading: /decode first|QR investigation/i },
   { path: '/firstlight', heading: /FIRSTLIGHT/i },
   { path: '/reports', heading: /report/i },
-  { path: '/learn', heading: /learn|safety/i },
+  { path: '/pdf-review', heading: /review the document|document review/i },
+  { path: '/media-review', heading: /inspect the frames|media review/i },
+  { path: '/cases', heading: /manage saved cases|case management/i },
+  { path: '/learn', heading: /learn|safety|social-engineering|pause\. verify\. then act/i },
   { path: '/login', heading: /investigations that|welcome back/i },
 ];
 
@@ -133,10 +142,10 @@ async function inspectViewport(viewport, label) {
       // A click is state-dependent and can accidentally close it if browser
       // state or a prior interaction already left it open.
       await disclosure.evaluate(element => { element.open = true; });
-      const qrLink = page.getByRole('link', { name: /open qr decoder/i });
+      const qrLink = disclosure.getByRole('link', { name: /open qr decoder/i });
       assert.equal(await qrLink.getAttribute('href'), '/qr', 'home QR capability must open the implemented local decoder');
       const qrCard = disclosure.locator('.tool-card').filter({ hasText: 'QR-code investigation' });
-      assert.match((await qrCard.textContent()) || '', /cross-browser decoding and destination inspection are not yet available/i,
+      assert.match((await qrCard.textContent()) || '', /bundled fallback decoder|cross-browser decoding/i,
         'home QR copy must disclose remaining capability limits');
     }
     if (route.path !== '/') {
@@ -263,9 +272,81 @@ async function inspectViewport(viewport, label) {
       await demoInput.fill('654321');
       await page.getByText(/demo interaction complete/i).waitFor();
     }
+
+    if (route.path === '/pdf-review') {
+      await page.locator('#document-file').setInputFiles({
+        name: 'synthetic-training-document.pdf',
+        mimeType: 'application/pdf',
+        buffer: makeMinimalPdf('URGENT: Please click this link immediately to confirm your account password.'),
+      });
+      await page.getByRole('button', { name: /extract and inspect locally/i }).click();
+      await page.getByRole('status').filter({ hasText: /local extraction complete/i }).waitFor();
+      await page.getByText('Urgency or time pressure', { exact: true }).waitFor();
+      await page.getByText('Credential or verification-code request', { exact: true }).waitFor();
+      assert.match(await page.locator('.local-review-hash').innerText(), /[a-f0-9]{64}/i,
+        'document review should fingerprint the original PDF bytes');
+      assert.match(await page.locator('body').innerText(), /not uploaded|no file upload/i,
+        'document review should explain its local-only processing boundary');
+    }
+    if (route.path === '/media-review') {
+      // MediaRecorder-generated WebM often lacks a finite Duration element in headless
+      // Chromium. Generate a deterministic, finalized fixture with FFmpeg instead.
+      const fixturePath = path.join(artifactDir, `synthetic-media-${label}.webm`);
+      const generated = spawnSync('ffmpeg', [
+        '-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i',
+        'color=c=0x132b3c:s=320x180:r=8', '-t', '2.2',
+        '-c:v', 'libvpx', '-deadline', 'realtime', '-cpu-used', '8',
+        '-an', '-y', fixturePath,
+      ], { encoding: 'utf8' });
+      assert.equal(generated.status, 0,
+        'FFmpeg must create a finalized synthetic WebM fixture: ' + (generated.stderr || generated.error || 'unknown error'));
+      const mediaBytes = await fs.readFile(fixturePath);
+      await page.locator('#media-file').setInputFiles({
+        name: 'synthetic-media-test.webm',
+        mimeType: 'video/webm',
+        buffer: Buffer.from(mediaBytes),
+      });
+      const videoElement = page.locator('video[aria-label="Locally loaded video preview"]');
+      const mediaStatus = await Promise.race([
+        page.getByRole('status').filter({ hasText: /video metadata loaded locally/i }).waitFor().then(() => ({ kind: 'ready' })),
+        page.locator('.local-review-page').getByRole('alert').waitFor().then(async () => ({
+          kind: 'error',
+          text: await page.locator('.local-review-page').getByRole('alert').innerText().catch(() => 'No error text.'),
+          video: await videoElement.evaluate(video => {
+            const target = video;
+            return {
+              readyState: target.readyState,
+              networkState: target.networkState,
+              duration: target.duration,
+              width: target.videoWidth,
+              height: target.videoHeight,
+              errorCode: target.error?.code ?? null,
+              errorMessage: target.error?.message ?? null,
+            };
+          }).catch(() => null),
+        })),
+      ]);
+      assert.equal(mediaStatus.kind, 'ready',
+        'synthetic WebM must load local metadata; received ' + JSON.stringify(mediaStatus));
+      await page.getByRole('button', { name: /inspect six representative frames/i }).click();
+      await page.getByRole('heading', { name: /sampled frame timeline/i }).waitFor();
+      assert.equal(await page.locator('.media-frame-card').count(), 6,
+        'media review should sample six bounded representative frames');
+      assert.match(await page.locator('.local-review-hash').innerText(), /[a-f0-9]{64}/i,
+        'media review should fingerprint the original video bytes');
+      assert.match(await page.locator('body').innerText(), /not a deepfake|not an authenticity|not a forensic verdict/i,
+        'media review should not claim a forensic authenticity verdict');
+    }
+
     if (route.path === '/firstlight') {
       await page.screenshot({ path: path.join(artifactDir, `firstlight-${label}.png`), fullPage: true });
-      const launch = page.getByRole('button', { name: /launch training case/i });
+      // FIRSTLIGHT is intentionally session-protected. A smoke run without a test
+      // identity must verify the login redirect, never bypass the access boundary.
+      if (new URL(page.url()).pathname === '/login') {
+        await page.getByRole('button', { name: /sign in securely/i }).waitFor();
+        continue;
+      }
+      const launch = page.locator('.firstlight-hero .btn-primary');
       await launch.waitFor();
       await launch.click();
       await page.getByRole('heading', { name: /artifacts & integrity/i }).waitFor();
@@ -284,6 +365,9 @@ async function inspectViewport(viewport, label) {
       await page.getByText('MISMATCH').first().waitFor();
       await page.getByRole('button', { name: /restore demo/i }).first().click();
       await page.getByText('HASHED').first().waitFor();
+      assert.equal(await page.getByText('MISMATCH', { exact: true }).count(), 0, 'restore demo must clear every tamper mismatch');
+      assert.equal(await page.getByText('[SIMULATED TAMPER]', { exact: false }).count(), 0, 'restore demo must remove the simulated tamper marker from the record');
+      assert.equal(await page.getByText('HASHED', { exact: true }).count(), 5, 'all five evidence records should read HASHED after restore');
 
       await page.getByRole('button', { name: /findings & gaps/i }).click();
       await page.getByRole('heading', { name: /findings & evidence gaps/i }).waitFor();

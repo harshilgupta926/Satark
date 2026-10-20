@@ -21,7 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      SATARK_PRODUCTION_URL: https://satark-qzym.vercel.app
+      # Verified Vercel production alias; repository variable can override it after a domain change.
+      SATARK_PRODUCTION_URL: ${{ vars.SATARK_PRODUCTION_URL || 'https://satark-rose.vercel.app' }}
     steps:
       - name: Check out current production branch revision
         uses: actions/checkout@v4
@@ -31,6 +32,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [[ -z "${SATARK_PRODUCTION_URL:-}" ]]; then
+            echo "::error::Set the repository Actions variable SATARK_PRODUCTION_URL if the verified production domain changes."
+            exit 1
+          fi
           expected_sha="$(git rev-parse HEAD)"
           base="${SATARK_PRODUCTION_URL%/}"
           body="$(mktemp)"
@@ -62,7 +67,7 @@ jobs:
           # Match route-specific body content rather than navigation labels shared by every page.
           check_route "/" "Pause the panic|Find the signal"
           check_route "/investigate" "Suspicious URL or message"
-          check_route "/firstlight" "Launch training case"
+          check_route "/firstlight" "Sign in securely"
           check_route "/reports" "Review notes"
           check_route "/learn" "Check answers"
           check_route "/login" "Sign in securely"
@@ -106,9 +111,25 @@ jobs:
             exit 1
           fi
           jq -e '.status == "configuration-only" and (.checks.rateLimit.configured | type == "boolean") and (.checks.rateLimit.sharedAcrossInstances | type == "boolean") and (has("UPSTASH_REDIS_REST_TOKEN") | not)' "$body" >/dev/null
+          if ! jq -e '.checks.persistentStorage.configured == true and .checks.persistentStorage.clientConfigured == true and .checks.persistentStorage.serverClientMatch == true and .checks.persistentStorage.serverProjectRef == "igqgtlmnwssjaoxkkzbm" and .checks.persistentStorage.clientProjectRef == "igqgtlmnwssjaoxkkzbm"' "$body" >/dev/null; then
+            echo "::error::Production browser/server Supabase configuration is missing or mismatched; expected the verified SATARK project igqgtlmnwssjaoxkkzbm."
+            exit 1
+          fi
           rate_mode="$(jq -r '.checks.rateLimit.mode // empty' "$body")"
           shared_limiter_ok="$(jq -r '.checks.rateLimit.sharedAcrossInstances // false' "$body")"
           echo "Production health: rate limiter mode=$rate_mode sharedAcrossInstances=$shared_limiter_ok."
+
+          version_status="$(curl --silent --show-error --max-time 20 --output "$body" --write-out '%{http_code}' "$base/api/version")"
+          if [[ "$version_status" != "200" ]]; then
+            echo "::error::Production /api/version returned HTTP $version_status; the deployed build revision cannot be verified."
+            exit 1
+          fi
+          deployed_sha="$(jq -r '.commit // empty' "$body")"
+          if [[ "$deployed_sha" != "$expected_sha" ]]; then
+            echo "::error::Production is serving commit $deployed_sha, but current main is $expected_sha. Deployment is stale."
+            exit 1
+          fi
+          echo "PASS /api/version: production serves current main commit $expected_sha."
 
           # Exercise a harmless synthetic input. A missing shared limiter must fail closed,
           # but it is still a release blocker because the primary analysis feature is unavailable.
@@ -135,14 +156,3 @@ jobs:
             exit 1
           fi
 
-          version_status="$(curl --silent --show-error --max-time 20 --output "$body" --write-out '%{http_code}' "$base/api/version")"
-          if [[ "$version_status" != "200" ]]; then
-            echo "::error::Production /api/version returned HTTP $version_status; the deployed build revision cannot be verified."
-            exit 1
-          fi
-          deployed_sha="$(jq -r '.commit // empty' "$body")"
-          if [[ "$deployed_sha" != "$expected_sha" ]]; then
-            echo "::error::Production is serving commit $deployed_sha, but current main is $expected_sha. Deployment is stale."
-            exit 1
-          fi
-          echo "PASS /api/version: production serves current main commit $expected_sha."

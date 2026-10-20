@@ -9,6 +9,7 @@ from firstlight_engine import (
     apply_simulated_response,
     create_demo_case,
     investigate_case,
+    prioritize_evidence,
     seal_evidence,
     verify_audit_chain,
     verify_evidence,
@@ -252,8 +253,36 @@ def render_firstlight() -> None:
             )
             st.rerun()
         if investigation:
-            st.markdown("#### Specialized agent run")
-            st.dataframe(investigation["agents"], use_container_width=True, hide_index=True)
+            st.markdown("#### Agent execution trace")
+            st.caption("This prototype uses six bounded deterministic stages that share the same evidence and finding contracts. They are not independent LLM agents yet; each row shows actual case counts and evidence references so the demo does not overstate autonomy.")
+            st.dataframe(
+                investigation.get("agent_trace", investigation["agents"]),
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "agent_id": st.column_config.TextColumn("Stage ID"),
+                    "name": st.column_config.TextColumn("Agent / stage"),
+                    "mode": st.column_config.TextColumn("Execution mode"),
+                    "status": st.column_config.TextColumn("Status"),
+                    "inputs": st.column_config.NumberColumn("Inputs"),
+                    "outputs": st.column_config.NumberColumn("Outputs"),
+                    "evidence_ids": st.column_config.ListColumn("Evidence references"),
+                    "summary": st.column_config.TextColumn("Trace summary", width="large"),
+                },
+            )
+            st.markdown("#### Evidence triage priority")
+            st.caption("Deterministic triage hints based on artifact volatility, text relevance, timestamp recency and integrity. Scores are not probabilities; a hash mismatch increases review urgency but never makes evidence trustworthy.")
+            st.dataframe([
+                {
+                    "Evidence ID": item["evidence_id"],
+                    "Priority": item["priority"].upper(),
+                    "Score": item["priority_score"],
+                    "Integrity": item["integrity"],
+                    "Why ranked": " · ".join(item["reasons"]),
+                    "Recommended next step": item["recommended_next_step"],
+                }
+                for item in (investigation.get("evidence_priorities") or prioritize_evidence(evidence))
+            ], use_container_width=True, hide_index=True)
             st.markdown("#### Findings")
             for finding in investigation["findings"]:
                 with st.container(border=True):

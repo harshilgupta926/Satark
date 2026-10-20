@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import SiteHeader from '../site-header';
-import { createTenant, getSession, listMyTenants, setActiveTenant, signIn, signOut, signUp, type SatarkSession, type SatarkTenant } from '../../lib/satark-auth';
+import { createTenant, getSession, listMyTenants, requestPasswordReset, setActiveTenant, signIn, signOut, signUp, type SatarkSession, type SatarkTenant } from '../../lib/satark-auth';
 
 export default function LoginPage() {
   const [session, setSession] = useState<SatarkSession | null>(null);
   const [tenants, setTenants] = useState<SatarkTenant[]>([]);
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [recovering, setRecovering] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [workspaceName, setWorkspaceName] = useState('');
@@ -48,6 +49,16 @@ export default function LoginPage() {
     finally { setBusy(false); }
   }
 
+  async function submitRecovery(event: FormEvent) {
+    event.preventDefault(); setBusy(true); setError(''); setNotice('');
+    try {
+      await requestPasswordReset(email.trim(), new URL('/reset-password', window.location.origin).toString());
+      setNotice('If an account exists for that email, a recovery link will be sent. Check your inbox.');
+    } catch {
+      setNotice('If an account exists for that email, a recovery link will be sent. If it does not arrive, check the address or try again later.');
+    } finally { setBusy(false); }
+  }
+
   async function submitWorkspace(event: FormEvent) {
     event.preventDefault(); setBusy(true); setError(''); setNotice('');
     try {
@@ -71,34 +82,46 @@ export default function LoginPage() {
 
   return (
     <div className="shell">
-      <SiteHeader status />
+      <SiteHeader />
       <main id="main-content" className="container">
-        <div className="eyebrow">SECURE WORKSPACE ACCESS</div>
-        <section className="hero" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(320px, .85fr)', alignItems: 'start' }}>
-          <div>
-            <h1 style={{ fontSize: 'clamp(38px, 5vw, 64px)' }}>Investigations that <span>remember.</span></h1>
+        <section className="auth-layout">
+          <div className="auth-aside">
+            <div className="eyebrow">Secure workspace access</div>
+            <h1>Investigations that <span>remember.</span></h1>
             <p className="lead">Sign in to access tenant-scoped incidents, evidence, and investigation history. Your access is enforced by Supabase authentication and database row-level security.</p>
-            <div className="info-panel" style={{ marginTop: 28 }}>
+            <div className="info-panel">
               <strong>Access model</strong>
               <p className="muted">Workspace membership controls access. The browser never receives a service-role credential. A newly created workspace grants owner access only to the signed-in account.</p>
             </div>
-            <p style={{ marginTop: 24 }}><Link className="btn btn-secondary" href="/investigate">Continue to public investigation tools ↗</Link></p>
+            <Link className="btn btn-secondary" href="/investigate">Continue to public investigation tools ↗</Link>
           </div>
-          <section className="form-panel" aria-labelledby="auth-title">
+          <section className="form-panel auth-card" aria-labelledby="auth-title">
             {!session ? <>
-              <div className="card-head"><span>IDENTITY</span><span className="pill">{mode === 'signin' ? 'SIGN IN' : 'CREATE ACCOUNT'}</span></div>
+              <div className="card-head"><span>Identity</span><span className="pill">{mode === 'signin' ? 'Sign in' : 'Create account'}</span></div>
               <h2 id="auth-title">{mode === 'signin' ? 'Welcome back' : 'Create your account'}</h2>
               <p className="muted">Use your workspace account. Email confirmation may be required depending on the Supabase Auth configuration.</p>
-              <form onSubmit={submitAuth}>
-                <label className="field-label" htmlFor="email">Email address</label>
-                <input id="email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} />
-                <label className="field-label" htmlFor="password">Password</label>
-                <input id="password" type="password" autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} required minLength={8} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} />
-                <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Please wait…' : mode === 'signin' ? 'Sign in securely' : 'Create account'}</button>
-              </form>
-              <p className="muted">{mode === 'signin' ? 'New to SATARK?' : 'Already have an account?'} <button type="button" className="text-button" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setNotice(''); }}>{mode === 'signin' ? 'Create an account' : 'Sign in'}</button></p>
+              {recovering ? <>
+                <h2 id="auth-title">Recover your account</h2>
+                <p className="muted">Enter your account email. For privacy, we show the same confirmation whether or not an account exists.</p>
+                <form onSubmit={submitRecovery}>
+                  <label className="field-label" htmlFor="email">Email address</label>
+                  <input id="email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} />
+                  <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Please wait…' : 'Send recovery link'}</button>
+                </form>
+                <p className="muted"><button type="button" className="text-button" onClick={() => { setRecovering(false); setError(''); setNotice(''); }}>Back to sign in</button></p>
+              </> : <>
+                <form onSubmit={submitAuth}>
+                  <label className="field-label" htmlFor="email">Email address</label>
+                  <input id="email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} />
+                  <label className="field-label" htmlFor="password">Password</label>
+                  <input id="password" type="password" autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} required minLength={8} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} />
+                  <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Please wait…' : mode === 'signin' ? 'Sign in securely' : 'Create account'}</button>
+                </form>
+                {mode === 'signin' && <p className="muted"><button type="button" className="text-button" onClick={() => { setRecovering(true); setError(''); setNotice(''); }}>Forgot password?</button></p>}
+                <p className="muted">{mode === 'signin' ? 'New to SATARK?' : 'Already have an account?'} <button type="button" className="text-button" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setNotice(''); }}>{mode === 'signin' ? 'Create an account' : 'Sign in'}</button></p>
+              </>}
             </> : <>
-              <div className="card-head"><span>AUTHENTICATED</span><span className="pill">SESSION ACTIVE</span></div>
+              <div className="card-head"><span>Authenticated</span><span className="pill">Session active</span></div>
               <h2 id="auth-title">Your workspaces</h2>
               <p className="muted">Signed in as {session.user.email || session.user.id}</p>
               {tenants.length ? <div className="workspace-list" aria-label="Available workspaces">
@@ -106,12 +129,12 @@ export default function LoginPage() {
                   <span><strong>{tenant.name}</strong><small>{tenant.role} · {tenant.id.slice(0, 8)}</small></span><span aria-hidden="true">→</span>
                 </button>)}
               </div> : <p className="empty-state">No workspace membership found yet. Create a workspace to begin.</p>}
-              <form onSubmit={submitWorkspace} style={{ marginTop: 22 }}>
+              <form onSubmit={submitWorkspace} className="private-upload">
                 <label className="field-label" htmlFor="workspace">New workspace name</label>
                 <input id="workspace" required minLength={1} maxLength={160} value={workspaceName} onChange={e => setWorkspaceName(e.target.value)} placeholder="e.g. Incident Response Team" />
                 <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create workspace'}</button>
               </form>
-              <button className="btn btn-secondary" type="button" onClick={() => void logout()} disabled={busy} style={{ marginTop: 12 }}>Sign out</button>
+              <button className="btn btn-secondary" type="button" onClick={() => void logout()} disabled={busy}>Sign out</button>
             </>}
             {error && <p className="error-message" role="alert">{error}</p>}
             {notice && <p className="success-message" role="status">{notice}</p>}

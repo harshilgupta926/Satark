@@ -46,8 +46,10 @@ jobs:
       - name: Dependency vulnerability audit
         run: npm audit --audit-level=high
 
-      - name: Install browser smoke-test tooling
+      - name: Install deterministic video fixture encoder and browser dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
           npx playwright install --with-deps chromium
 
       - name: Production build

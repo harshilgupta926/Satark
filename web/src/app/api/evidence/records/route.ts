@@ -1,10 +1,19 @@
 import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
+import { readBoundedJson } from '@/lib/read-bounded-json';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_BODY = 24 * 1024;
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    return '{' + Object.keys(obj).sort().map(key => JSON.stringify(key) + ':' + canonical(obj[key])).join(',') + '}';
+  }
+  return JSON.stringify(value);
+}
 function reply(body: unknown, status = 200) { return NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } }); }
 function config() {
   const raw = process.env.SUPABASE_URL, key = process.env.SUPABASE_PUBLISHABLE_KEY;
@@ -26,11 +35,10 @@ export async function POST(request: Request) {
     userId = value.id;
   } catch { return reply({ error: 'Authentication service is temporarily unavailable.' }, 503); }
   finally { clearTimeout(timer); }
-  const length = Number(request.headers.get('content-length') || 0);
-  if (length > MAX_BODY) return reply({ error: 'Evidence record is too large.' }, 413);
-  let input: unknown;
-  try { input = await request.json(); } catch { return reply({ error: 'A valid JSON object is required.' }, 400); }
-  if (!input || typeof input !== 'object' || Array.isArray(input) || Buffer.byteLength(JSON.stringify(input), 'utf8') > MAX_BODY) return reply({ error: 'A bounded JSON object is required.' }, 400);
+  const parsed = await readBoundedJson(request, MAX_BODY);
+  if (!parsed.ok) return reply({ error: parsed.error }, parsed.status);
+  const input = parsed.value;
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return reply({ error: 'A bounded JSON object is required.' }, 400);
   const value = input as Record<string, unknown>;
   const tenantId = value.tenant_id, caseId = value.case_id;
   const source = typeof value.source_label === 'string' ? value.source_label.trim() : 'Imported event';
@@ -44,11 +52,11 @@ export async function POST(request: Request) {
   const record = {
     tenant_id: tenantId, case_id: caseId, source_label: source, event_kind: kind,
     observed_at: new Date(observedAt).toISOString(), summary,
-    metadata: { ...metadata as Record<string, unknown>, source: 'FIRSTLIGHT event record' },
+    metadata: { ...metadata as Record<string, unknown>, source: 'FIRSTLIGHT event record', record_hash_version: 2 },
     created_by: userId,
   };
-  const canonical = JSON.stringify(record);
-  const recordSha = createHash('sha256').update(canonical).digest('hex');
+  const canonicalRecord = canonical(record);
+  const recordSha = createHash('sha256').update(canonicalRecord).digest('hex');
   try {
     const response = await fetch(cfg.url + '/rest/v1/satark_evidence', {
       method: 'POST',

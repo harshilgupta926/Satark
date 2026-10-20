@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
+import { readBoundedJson } from '@/lib/read-bounded-json';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -47,9 +48,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const cfg = config(); if (!cfg) return reply({error:'Report storage is not configured.'},503);
   const a = await auth(request,cfg); if (a.error||!a.token||!a.userId) return a.error ?? reply({error:'Sign in is required.'},401);
-  const length = Number(request.headers.get('content-length')||0); if(length>1100*1024) return reply({error:'Report snapshot exceeds the 1 MiB limit.'},413);
-  let body: unknown; try{body=await request.json();}catch{return reply({error:'A valid JSON object is required.'},400);}
-  if(!body||typeof body!=='object'||Array.isArray(body)||Buffer.byteLength(JSON.stringify(body),'utf8')>1100*1024) return reply({error:'A bounded JSON object is required.'},413);
+  const parsed = await readBoundedJson(request, 1100 * 1024);
+  if (!parsed.ok) return reply({ error: parsed.error }, parsed.status);
+  const body = parsed.value;
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return reply({ error: 'A bounded JSON object is required.' }, 400);
   const v=body as Record<string,unknown>,tenantId=v.tenant_id,caseId=v.case_id,title=typeof v.title==='string'?v.title.trim():'';
   const snapshot=v.snapshot;
   if(typeof tenantId!=='string'||!UUID.test(tenantId)||typeof caseId!=='string'||!UUID.test(caseId)||!title||title.length>240||!snapshot||typeof snapshot!=='object'||Array.isArray(snapshot)) return reply({error:'Report fields are invalid.'},400);

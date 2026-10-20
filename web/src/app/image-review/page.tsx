@@ -199,7 +199,7 @@ export default function ImageReviewPage() {
       <SiteHeader />
       <div className="container subpage" id="main-content" tabIndex={-1}>
         <ServiceReadiness />
-        <div className="eyebrow">WORKSPACE / IMAGE REVIEW</div>
+        <div className="eyebrow">Image review</div>
         <h1>Inspect the image. Keep the file local.</h1>
         <p className="lead">Review image dimensions, basic metadata markers, and a SHA-256 fingerprint directly in your browser. No file upload or third-party image API is used.</p>
         <div className="notice-panel">
@@ -218,11 +218,11 @@ export default function ImageReviewPage() {
           {error && <div className="result error" role="alert">{error}</div>}
         </section>
         {inspection && <section className="analysis-result" aria-live="polite" aria-labelledby="image-result-title">
-          <div className="result-top"><span className="pill">LOCAL REVIEW</span><strong id="image-result-title">Image inspection complete</strong></div>
+          <div className="result-top"><span className="pill">Local review</span><strong id="image-result-title">Image inspection complete</strong></div>
           <div className="workspace-grid">
             <div className="info-panel">
               <h3>Preview</h3>
-              {preview && <img src={preview} alt={'Local preview of ' + inspection.name} style={{ display: 'block', maxWidth: '100%', maxHeight: 420, objectFit: 'contain', margin: '0 auto', borderRadius: 12 }} />}
+              {preview && <img className="image-preview" src={preview} alt={'Local preview of ' + inspection.name} />}
             </div>
             <div className="info-panel">
               <h3>File facts</h3>
@@ -235,7 +235,7 @@ export default function ImageReviewPage() {
             </div>
           </div>
           <h3>SHA-256 fingerprint</h3>
-          <p className="field-note" style={{ overflowWrap: 'anywhere' }}>{inspection.sha256}</p>
+          <p className="field-note hash-value">{inspection.sha256}</p>
           <button className="btn btn-secondary" onClick={() => {
             if (!navigator.clipboard?.writeText) {
               setError('Clipboard access is unavailable. Select and copy the fingerprint manually.');

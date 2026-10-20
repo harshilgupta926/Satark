@@ -120,3 +120,23 @@ export function parseCsv(text) {
   }
   return events;
 }
+
+export const SIMULATED_TAMPER_MARKER = ' [SIMULATED TAMPER]';
+
+/**
+ * Toggle the visible simulated-tamper marker on an evidence summary.
+ * Restoring must remove exactly the marker that tampering appended, so the
+ * canonical record hashes back to its original digest.
+ *
+ * @param {string} summary
+ * @param {boolean} currentlyTampered
+ * @returns {string}
+ */
+export function toggleSimulatedTamper(summary, currentlyTampered) {
+  if (currentlyTampered) {
+    return summary.endsWith(SIMULATED_TAMPER_MARKER)
+      ? summary.slice(0, -SIMULATED_TAMPER_MARKER.length)
+      : summary;
+  }
+  return summary.endsWith(SIMULATED_TAMPER_MARKER) ? summary : summary + SIMULATED_TAMPER_MARKER;
+}

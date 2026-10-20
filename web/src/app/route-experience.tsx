@@ -48,7 +48,7 @@ export default function RouteExperience() {
     <div className={`route-veil${navigating ? ' route-veil-visible' : ''}`} aria-hidden="true">
       <div className="route-veil-card">
         <span className="route-veil-mark">S<span>.</span></span>
-        <span className="route-veil-label">SATARK SENTINEL</span>
+        <span className="route-veil-label">Loading</span>
         <span className="route-veil-track"><i /></span>
       </div>
     </div>

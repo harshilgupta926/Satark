@@ -25,7 +25,9 @@ test('case API delegates tenant isolation to RLS and derives creator from authen
 
 test('case API bounds and validates untrusted input and disables caching', () => {
   assert.match(source, /MAX_BODY_BYTES/);
-  assert.match(source, /Buffer\.byteLength\(raw, 'utf8'\)/);
+  assert.match(source, /totalBytes \+= value\.byteLength/);
+  assert.match(source, /reader\.cancel\(\)/);
+  assert.match(source, /reader\.releaseLock\(\)/);
   assert.match(source, /STATUSES/);
   assert.match(source, /SEVERITIES/);
   assert.match(source, /Cache-Control': 'no-store'/);

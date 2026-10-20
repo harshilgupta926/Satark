@@ -42,33 +42,43 @@ export default function ServiceReadiness() {
   if (unavailable) {
     return <div className="readiness-banner readiness-degraded" role="status">
       <span className="readiness-dot" aria-hidden="true" />
-      <span>
+      <div className="readiness-body">
         <strong>Service status unavailable</strong>
         <small>The health endpoint could not be verified. Analysis may still work, but this banner cannot confirm it. Retry the page or check deployment logs before relying on this service.</small>
-      </span>
+      </div>
     </div>;
   }
   if (!health) return <div className="readiness-banner" role="status" aria-live="polite">
     <span className="readiness-dot" aria-hidden="true" />
-    <span><strong>Checking service configuration…</strong><small>This check reports configuration only, not live dependency health.</small></span>
+    <div className="readiness-body"><strong>Checking service configuration…</strong><small>This check reports configuration only, not live dependency health.</small></div>
   </div>;
+
+  const chips: Array<[string, string]> = [
+    ['Analysis', health.checks.analysis.configured ? 'local' : 'needs review'],
+    ['Self-hosted model', health.checks.localModel.configured ? 'configured' : 'not configured'],
+    ['Storage', health.checks.persistentStorage.configured ? 'configured' : 'not configured'],
+  ];
 
   return <div className="readiness-banner readiness-ready" role="status">
     <span className="readiness-dot" aria-hidden="true" />
-    <span>
-      <strong>Local-first analysis · configuration snapshot</strong>
-      <small>
-        {health.checks.analysis.configured
-          ? 'Deterministic local checks are the baseline; no third-party AI key is required.'
-          : 'Analysis configuration needs review.'}
-        {health.checks.localModel.configured
-          ? ' Both the self-hosted model URL and model name are configured; model availability is not verified.'
-          : ' A self-hosted model is not fully configured; local-language model summaries may be unavailable.'}
-        {health.checks.persistentStorage.configured
-          ? ' Storage credentials are configured, but database connectivity and tenant authorization are not verified.'
-          : ' Persistent case/evidence storage is not configured in this deployment.'}
-        {' '}{describeRateLimitStatus(health.checks.rateLimit)}
-      </small>
-    </span>
+    <div className="readiness-body">
+      <strong>Service configuration snapshot</strong>
+      <div className="readiness-chips">{chips.map(([label, value]) => <span key={label}>{label}: <b>{value}</b></span>)}</div>
+      <details className="readiness-details">
+        <summary>What this does and does not check</summary>
+        <p>
+          {health.checks.analysis.configured
+            ? 'Deterministic local checks are the baseline; no third-party AI key is required.'
+            : 'Analysis configuration needs review.'}
+          {health.checks.localModel.configured
+            ? ' Both the self-hosted model URL and model name are configured; model availability is not verified.'
+            : ' A self-hosted model is not fully configured; local-language model summaries may be unavailable.'}
+          {health.checks.persistentStorage.configured
+            ? ' Storage credentials are configured, but database connectivity and tenant authorization are not verified.'
+            : ' Persistent case/evidence storage is not configured in this deployment.'}
+          {' '}{describeRateLimitStatus(health.checks.rateLimit)}
+        </p>
+      </details>
+    </div>
   </div>;
 }

@@ -20,14 +20,18 @@ function config() {
 function saveSession(value: unknown): SatarkSession {
   if (!value || typeof value !== 'object') throw new Error('Authentication returned an invalid session.');
   const raw = value as Record<string, unknown>;
-  if (typeof raw.access_token !== 'string' || typeof raw.refresh_token !== 'string' ||
-      !raw.user || typeof raw.user !== 'object' || typeof (raw.user as Record<string, unknown>).id !== 'string') {
+  if (typeof raw.access_token !== 'string' || raw.access_token.length < 20 || raw.access_token.length > 8192 ||
+      typeof raw.refresh_token !== 'string' || raw.refresh_token.length < 20 || raw.refresh_token.length > 8192 ||
+      !raw.user || typeof raw.user !== 'object' || typeof (raw.user as Record<string, unknown>).id !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test((raw.user as Record<string, unknown>).id as string)) {
     throw new Error('Authentication did not return a complete session.');
   }
   const session: SatarkSession = {
     access_token: raw.access_token,
     refresh_token: raw.refresh_token,
-    expires_at: Date.now() + Math.max(0, Number(raw.expires_in || 3600)) * 1000,
+    expires_at: typeof raw.expires_at === 'number' && Number.isFinite(raw.expires_at)
+      ? raw.expires_at * 1000
+      : Date.now() + Math.max(0, Math.min(86400, Number(raw.expires_in || 3600))) * 1000,
     user: raw.user as SatarkSession['user'],
   };
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -39,7 +43,9 @@ export function readStoredSession(): SatarkSession | null {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     const value = JSON.parse(raw) as SatarkSession;
-    if (!value.access_token || !value.refresh_token || !value.user?.id) return null;
+    if (typeof value.access_token !== 'string' || value.access_token.length < 20 || value.access_token.length > 8192 ||
+        typeof value.refresh_token !== 'string' || value.refresh_token.length < 20 || value.refresh_token.length > 8192 ||
+        !value.user?.id || !Number.isFinite(value.expires_at)) return null;
     return value;
   } catch {
     return null;
@@ -70,13 +76,73 @@ async function authRequest(path: string, body: Record<string, unknown>) {
   return data;
 }
 
+async function syncServerSession(session: SatarkSession | null) {
+  const response = await fetch('/api/auth/session', {
+    method: session ? 'POST' : 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    ...(session ? { body: JSON.stringify({ access_token: session.access_token, refresh_token: session.refresh_token, expires_at: session.expires_at }) } : {}),
+    cache: 'no-store',
+    credentials: 'same-origin',
+  });
+  if (!response.ok) throw new Error('Could not establish a secure server session. Please try again.');
+}
+
 export async function signIn(email: string, password: string) {
-  return saveSession(await authRequest('token?grant_type=password', { email, password }));
+  const session = saveSession(await authRequest('token?grant_type=password', { email, password }));
+  try { await syncServerSession(session); }
+  catch (error) { clearSession(); throw error; }
+  return session;
+}
+
+export async function requestPasswordReset(email: string, redirectTo: string) {
+  const { url, key } = config();
+  const callback = new URL(redirectTo);
+  if (callback.protocol !== 'https:' && callback.hostname !== 'localhost' && callback.hostname !== '127.0.0.1') {
+    throw new Error('Password recovery requires a secure redirect URL.');
+  }
+  const response = await fetch(url + '/auth/v1/recover', {
+    method: 'POST',
+    headers: { apikey: key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, redirect_to: callback.toString() }),
+    cache: 'no-store',
+    redirect: 'error',
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!response.ok) {
+    // Keep the response generic in the UI to avoid revealing whether an account exists.
+    throw new Error('Password recovery could not be requested. Check the email and try again later.');
+  }
+}
+
+export async function completePasswordReset(accessToken: string, password: string) {
+  if (!accessToken || accessToken.length > 8192 || !/^[A-Za-z0-9._~-]+$/.test(accessToken)) {
+    throw new Error('The recovery link is invalid or expired. Request a new one.');
+  }
+  if (password.length < 8 || password.length > 128) {
+    throw new Error('Use a password between 8 and 128 characters.');
+  }
+  const { url, key } = config();
+  const response = await fetch(url + '/auth/v1/user', {
+    method: 'PUT',
+    headers: { apikey: key, Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+    cache: 'no-store',
+    redirect: 'error',
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!response.ok) {
+    throw new Error('The recovery link is invalid or expired. Request a new one.');
+  }
 }
 
 export async function signUp(email: string, password: string) {
   const data = await authRequest('signup', { email, password });
-  if (data.access_token && data.refresh_token) return { session: saveSession(data), confirmationRequired: false };
+  if (data.access_token && data.refresh_token) {
+    const session = saveSession(data);
+    try { await syncServerSession(session); }
+    catch (error) { clearSession(); throw error; }
+    return { session, confirmationRequired: false };
+  }
   return { session: null, confirmationRequired: true };
 }
 
@@ -87,7 +153,9 @@ export async function getSession(): Promise<SatarkSession | null> {
   if (current.expires_at > Date.now() + 60_000) return current;
   try {
     const refreshed = await authRequest('token?grant_type=refresh_token', { refresh_token: current.refresh_token });
-    return saveSession(refreshed);
+    const session = saveSession(refreshed);
+    await syncServerSession(session);
+    return session;
   } catch {
     clearSession();
     return null;
@@ -104,6 +172,7 @@ export async function signOut() {
       cache: 'no-store',
     }).catch(() => undefined);
   }
+  await fetch('/api/auth/session', { method: 'DELETE', credentials: 'same-origin', cache: 'no-store' }).catch(() => undefined);
   clearSession();
 }
 

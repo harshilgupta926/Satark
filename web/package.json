@@ -10,12 +10,18 @@
     "test": "node --test tests/*.test.mjs",
     "test:ci": "npm run typecheck && npm test && npm run build",
     "test:integration": "node --test tests/tenant-isolation.integration.test.mjs",
-    "test:browser": "node tests/browser-smoke.mjs"
+    "test:browser": "node tests/browser-smoke.mjs",
+    "predev": "node scripts/prepare-pdf-worker.mjs",
+    "prebuild": "node scripts/prepare-pdf-worker.mjs",
+    "evaluate:local-analysis": "node scripts/evaluate-local-analysis.mjs"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.14",
+    "geist": "^1.4.2",
+    "jsqr": "^1.4.0",
     "lucide-react": "^0.468.0",
     "next": "^15.5.4",
+    "pdfjs-dist": "^6.4.299",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "tailwindcss": "^4.1.14"
@@ -25,8 +31,8 @@
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "axe-core": "^4.10.3",
-    "typescript": "^5.9.2",
-    "playwright": "^1.58.2"
+    "playwright": "^1.58.2",
+    "typescript": "^5.9.2"
   },
   "overrides": {
     "postcss": "^8.5.23"
