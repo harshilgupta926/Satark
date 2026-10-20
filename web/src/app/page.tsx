@@ -1,7 +1,11 @@
 'use client';
 
 import SiteHeader from './site-header';
-import ServiceReadiness from '../components/service-readiness';
+import dynamic from 'next/dynamic';
+import { useEffect, useRef, useState } from 'react';
+
+// Defer the health/status module until its below-the-fold section is near view.
+const ServiceReadiness = dynamic(() => import('../components/service-readiness'), { ssr: false });
 import IntegrityLedger from '../components/ui/integrity-ledger';
 import {
   ArrowRight, ArrowUpRight, ScanSearch, ShieldCheck, FileText, BookOpen, LockKeyhole, ScanLine, Eye, ShieldAlert,
@@ -48,6 +52,26 @@ const principles = [
 ];
 
 export default function Home() {
+  const readinessRef = useRef<HTMLDivElement | null>(null);
+  const [readinessVisible, setReadinessVisible] = useState(false);
+
+  useEffect(() => {
+    const target = readinessRef.current;
+    if (!target) return;
+    if (!('IntersectionObserver' in window)) {
+      setReadinessVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        setReadinessVisible(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '240px 0px' });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <main className="shell">
       <SiteHeader />
@@ -141,7 +165,11 @@ export default function Home() {
           <a href="/tools">Capability status <ArrowUpRight size={15} aria-hidden="true" /></a>
         </section>
 
-        <div style={{ marginTop: 24 }}><ServiceReadiness /></div>
+        <div ref={readinessRef} style={{ marginTop: 24, minHeight: 76 }}>
+          {readinessVisible
+            ? <ServiceReadiness />
+            : <div className="readiness-banner" role="status" aria-live="polite"><span className="readiness-dot" aria-hidden="true" /><div className="readiness-body"><strong>Service status loads on approach</strong><small>The configuration snapshot is deferred until this section is near the viewport.</small></div></div>}
+        </div>
 
         <section className="sentinel-learning-strip">
           <div className="learning-mark"><BookOpen size={20} aria-hidden="true" /></div><div><div className="sentinel-overline">Build your instincts</div><h2>Practice spotting the pressure.</h2><p>Learn the patterns behind urgency, impersonation and social engineering in a safe environment.</p></div><a href="/learn" className="sentinel-secondary">Open the academy</a>
