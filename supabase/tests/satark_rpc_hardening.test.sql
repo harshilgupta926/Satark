@@ -80,15 +80,15 @@ select ok(
 select ok(
   has_function_privilege('authenticated','public.satark_decide_approval(uuid,text,text)','EXECUTE')
   and has_function_privilege('authenticated','public.satark_authorize_response_action(uuid,uuid,uuid,text,text)','EXECUTE')
-  and has_function_privilege('authenticated','public.satark_consume_response_approval(uuid,uuid,uuid,text,text)','EXECUTE')
+  and not has_function_privilege('authenticated','public.satark_consume_response_approval(uuid,uuid,uuid,text,text)','EXECUTE')
   and has_function_privilege('authenticated','public.satark_list_assignable_members(uuid)','EXECUTE'),
-  'authenticated callers retain access to the four public RPC wrappers');
+  'authenticated callers can use decision, authorization and assignment RPCs but cannot consume approvals');
 select ok(
   has_function_privilege('authenticated','satark_private.decide_approval(uuid,text,text)','EXECUTE')
   and has_function_privilege('authenticated','satark_private.authorize_response_action(uuid,uuid,uuid,text,text)','EXECUTE')
-  and has_function_privilege('authenticated','satark_private.consume_response_approval(uuid,uuid,uuid,text,text)','EXECUTE')
+  and not has_function_privilege('authenticated','satark_private.consume_response_approval(uuid,uuid,uuid,text,text)','EXECUTE')
   and has_function_privilege('authenticated','satark_private.list_assignable_members(uuid)','EXECUTE'),
-  'public wrappers can invoke the permissioned private implementations');
+  'private approval implementations are callable only where explicitly granted; consumption stays server-disabled');
 
 select ok(not has_function_privilege('anon', 'public.satark_create_tenant(text)', 'EXECUTE'),
   'anonymous callers cannot execute the tenant-creation wrapper');
