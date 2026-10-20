@@ -74,6 +74,14 @@ This status describes repository-backed behavior and explicitly lists external c
 - The Wazuh integration is merged in PR #160; its FIRSTLIGHT API CI, CodeQL, general CI, Web CI, and isolated migration validation passed on that PR head. PR #161 and PR #164 storage-policy cleanup checks passed; PR #167's object-key regression test and PR #168's SATARK foreign-key indexes also passed their exact-head CI, Web CI, CodeQL and isolated migration checks.
 - Vercel currently has an older production deployment at SHA `21abd4c7466cb7490ae1acb372d04008f72e40d5`; the latest available deployment is a READY preview for branch `feat/firstlight-wazuh-rebased` at SHA `a6ad65ea910c40362bb9005febb447893776002f`. A new deployment attempt was blocked by HTTP 402 `api-deployments-free-per-day` with a 24-hour retry window; the runtime-error API returned 403. The production environment inventory lacks `FIRSTLIGHT_API_URL`, `FIRSTLIGHT_API_TOKEN`, `FIRSTLIGHT_WAZUH_SYNC_TOKEN` and Wazuh Indexer configuration. No authorized Wazuh endpoint/credentials or SATARK test tenant/case/actor exists; all 11 SATARK data tables currently contain zero rows, so real end-to-end ingestion remains blocked.
 
+## Additional live Wazuh API path (2026-10-20)
+
+- Added `POST /api/v1/integrations/wazuh/investigate`, an authenticated read-only path that queries the configured Wazuh Indexer, enforces the configured tenant UUID and bounded result count, computes evidence digests over normalized source records, and runs the canonical deterministic investigation engine. Optional model agents remain advisory.
+- Added API contract tests for authentication, tenant mismatch, bounded page size, evidence/result shape, and empty results. The CI FIRSTLIGHT pytest command includes the new API tests plus the Wazuh connector, CLI investigation, guarded response CLI, and offline demo regression tests.
+- Added `docs/FIRSTLIGHT_WAZUH_API.md` with environment variables, endpoint contract, least-privilege requirements and integrity limitations.
+
+This is implementation plus regression coverage, not proof of live connectivity. The endpoint deliberately does not persist a case, create a durable checkpoint, or execute response actions. The API tests mock the connector response; live acceptance still requires a real authorized Wazuh Indexer and source event IDs. Do not describe the endpoint as production-ready until those tests and the dedicated tenant-isolation/release gates pass.
+
 ## Implemented in the prototype
 
 - Synthetic account-compromise training case with fictional indicators.
