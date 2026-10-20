@@ -16,3 +16,16 @@ test('local Next.js image receives public Supabase config at build time', () => 
   assert.ok(dockerfile.includes('ARG NEXT_PUBLIC_SUPABASE_URL'));
   assert.ok(dockerfile.includes('ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'));
 });
+
+test('local containers can reach the host Supabase API on Linux Docker', () => {
+  assert.ok(compose.includes('host.docker.internal:host-gateway'));
+});
+
+test('offline acceptance probe uses loopback-only service URLs by default', async () => {
+  const probe = await readFile(new URL('../../scripts/check-local-offline-services.sh', import.meta.url), 'utf8');
+  assert.ok(probe.includes('http://127.0.0.1:3000'));
+  assert.ok(probe.includes('http://127.0.0.1:54321'));
+  assert.ok(probe.includes('http://127.0.0.1:11434'));
+  assert.ok(probe.includes('check_local_url'));
+  assert.ok(probe.includes('does not itself prove that the host is offline'));
+});
