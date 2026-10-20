@@ -61,6 +61,6 @@ def test_exact_confirmation_calls_only_explicit_target(monkeypatch, capsys):
         reason="case FL-1",
     )
     captured = capsys.readouterr().out
-    output = json.loads(captured[captured.index("{\\n"):])
+    output = json.loads(captured[captured.index("{"):])
     assert output["status"] == "submitted"
     assert "not proof of completion" in output["note"]
