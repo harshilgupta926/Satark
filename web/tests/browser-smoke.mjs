@@ -138,6 +138,15 @@ async function inspectViewport(viewport, label) {
       `${label}: skip link should be the first keyboard focus target on ${route.path}`);
     const bodyText = await page.locator('body').innerText();
     assert.match(bodyText, route.heading, `${label}: expected route content missing at ${route.path}`);
+    if (route.path === '/firstlight') {
+      assert.match(bodyText, /Configuration is not proof of operation\./,
+        `${label}: FIRSTLIGHT must distinguish configured integrations from verified operation`);
+      const readiness = page.locator('.fl-readiness');
+      await readiness.waitFor({ state: 'visible' });
+      const readinessState = await readiness.locator('.fl-readiness-state').innerText();
+      assert.match(readinessState, /STATUS UNAVAILABLE|CHECKING…|PROBE REPORTED · VERIFY RESULT|CONFIGURATION ONLY/,
+        `${label}: readiness badge must not imply an unverified provider is healthy`);
+    }
     if (route.path === '/') {
       const disclosure = page.locator('.tools-disclosure');
       // Force the disclosure into its expanded state instead of toggling it.
