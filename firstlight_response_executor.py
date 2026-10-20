@@ -438,6 +438,8 @@ class ResponseLedger:
                     raise ResponseExecutionError("Approval not found for this tenant and case.")
                 if row["status"] not in {"submitted", "unknown"}:
                     raise ResponseExecutionError("Only submitted or uncertain actions can be reconciled.")
+                if not row["executor_id"]:
+                    raise ResponseExecutionError("Executor identity is unavailable; independent verification cannot be established for this legacy action.")
                 if verifier_id in {row["executor_id"], row["approved_by"], row["requested_by"]}:
                     raise ResponseExecutionError("Independent verification requires an identity distinct from requester, approver, and executor.")
                 if row["provider_reference"] and row["provider_reference"] != provider_reference:
