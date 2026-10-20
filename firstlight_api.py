@@ -225,7 +225,7 @@ async def investigate_wazuh_alerts(
             "source": "wazuh-indexer",
             "mode": "live_read_only_investigation",
             "fetched_count": 0,
-            "integrity_summary": {"total": 0, "verified": 0, "mismatched": 0},
+            "integrity_summary": {"total": 0, "sealed": 0, "source_verified": 0, "mismatched": 0},
             "investigation": None,
             "agent_analysis": {"enabled": False, "mode": "not_run_empty_input", "agents": []},
             "limitations": ["No matching Wazuh alerts were returned for this query.", "No case was persisted and no response action was executed."],
@@ -250,7 +250,7 @@ async def investigate_wazuh_alerts(
             "record": record,
             "sha256": digest,
             "collected_at": "",
-            "integrity_status": "verified",
+            "integrity_status": "sealed_after_retrieval",
         })
         model_events.append({
             "id": event["event_id"],
@@ -259,7 +259,7 @@ async def investigate_wazuh_alerts(
             "kind": event["kind"],
             "summary": event["summary"],
             "details": event.get("details", {}),
-            "integrity": "verified",
+            "integrity": "sealed_after_retrieval",
         })
     case_fingerprint = hashlib.sha256("\n".join(source_ids).encode("utf-8")).hexdigest()[:20]
     case_id = "WAZUH-" + case_fingerprint
@@ -283,7 +283,7 @@ async def investigate_wazuh_alerts(
         "persisted": False,
         "case_id": case_id,
         "fetched_count": len(events),
-        "integrity_summary": {"total": len(envelopes), "verified": len(envelopes), "mismatched": 0},
+        "integrity_summary": {"total": len(envelopes), "sealed": len(envelopes), "source_verified": 0, "mismatched": 0},
         "evidence": [{"evidence_id": item["evidence_id"], "sha256": item["sha256"], "record": item["record"]} for item in envelopes],
         "investigation": result,
         "agent_analysis": agent_analysis,
