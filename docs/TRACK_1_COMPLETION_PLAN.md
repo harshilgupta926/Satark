@@ -53,6 +53,9 @@ A hash calculated after collection proves that the stored snapshot has not chang
 
 - [ ] Produce one reproducible end-to-end acceptance report with commit SHA, environment class, test command, test result, real source IDs redacted as necessary, and provider action IDs where authorized.
 - [ ] Ensure every finding has evidence references, rule/model provenance, timestamps, confidence/limitations, and a deterministic explanation.
+- [ ] Expand the current FIRSTLIGHT rule metadata into a reviewed detection catalogue: map each supported rule to the relevant current MITRE ATT&CK technique/detection strategy and cite its source; treat mappings as triage context, never proof.
+- [ ] Define a versioned normalized event contract and assess OCSF compatibility before adding more providers; preserve source-native fields and provenance so normalization does not discard forensic detail.
+- [ ] If adding portable third-party detections, validate imported Sigma rules against the official Sigma specification and a test corpus; do not claim Sigma compatibility until parsing, field mapping, and expected-match tests exist.
 - [ ] Add explicit state-machine tests for investigation job retries, cancellation, deadline exhaustion, duplicate jobs, and worker crashes.
 - [ ] Verify response execution is impossible without an unexpired approval bound to the exact tenant, case, target, action, and reason.
 - [ ] Ensure API readiness is degraded when required authentication, persistence, or provider configuration is absent; never advertise production readiness from a process-only health check.
@@ -91,6 +94,9 @@ A hash calculated after collection proves that the stored snapshot has not chang
 - Wazuh Indexer API reference and authentication: https://documentation.wazuh.com/current/user-manual/indexer-api/reference.html
 - Microsoft Defender for Endpoint isolate-machine API, prerequisites and permissions: https://learn.microsoft.com/en-us/microsoft-365/security/defender-endpoint/isolate-machine
 - Supabase database/RLS testing overview and pgTAP: https://supabase.com/docs/guides/local-development/testing/overview
+- MITRE ATT&CK detection strategies: https://attack.mitre.org/detectionstrategies/
+- Official Sigma rule specification: https://github.com/SigmaHQ/sigma-specification
+- Open Cybersecurity Schema Framework (OCSF) schema: https://github.com/ocsf/ocsf-schema
 
 ## 7. Audit truth statement
 
