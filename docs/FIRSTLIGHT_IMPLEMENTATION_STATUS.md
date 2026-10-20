@@ -1,6 +1,21 @@
 # FIRSTLIGHT implementation status
 
-Last reviewed: 2026-10-20 (UTC; main SHA `d4c5bbcdaf321107538bc9fc64fbbab0e6b0cce7`)
+Last reviewed: 2026-10-20 (UTC; main SHA `cc250e13ef0cd9d5e8f77a832e87617365a65ddf`)
+
+## Latest release-gate recheck — 2026-10-20 17:10 UTC
+
+This section supersedes any older “latest SHA” wording below. The detailed historical notes remain for traceability.
+
+- **Current main:** `cc250e13ef0cd9d5e8f77a832e87617365a65ddf`. This includes the merge of PR #216, which documents the operator-approved Saathi project scope for SATARK integration testing.
+- **CI on current main:** run [39463290850](https://github.com/kaustubhdua/Satark/actions/runs/39463290850) failed only in the **Supabase tenant-isolation integration** job's “Check dedicated least-privilege test accounts” preflight. Python validation, Next.js web validation, and browser/accessibility smoke completed successfully. The actual tenant/RLS integration tests did **not** run because required test-account secrets were empty. This is BLOCKED by configuration, not a passing isolation test.
+- **CodeQL on current main:** [run 39463290881](https://github.com/kaustubhdua/Satark/actions/runs/39463290881) succeeded.
+- **Production smoke on current main:** [run 39463560886](https://github.com/kaustubhdua/Satark/actions/runs/39463560886) failed. Production must not be considered verified from this run.
+- **Saathi test environment:** project ref `ibvgxgvcqcfnoyrlwywa` is the selected SATARK test environment by explicit operator approval. The approved scope does not authorize destructive resets or changes to Saathi-owned tables, Auth users, storage, secrets, or workflows. PR #216 documents the read-only baseline and required safe setup. No test identities, tenant fixtures, secrets, or schema changes were created by that documentation change.
+- **Current decision:** NO-GO for claiming full release readiness. Next required operator steps are to provision the three dedicated ordinary test identities and distinct SATARK-only tenant fixtures, configure the repository Actions secrets listed in `docs/SAATHI_SATARK_TEST_ENVIRONMENT.md`, reconcile the live migration ledger against the repository, then rerun the exact-commit tenant-isolation tests without skipping. Production deployment identity and smoke verification remain separate gates.
+- **Network/repository access limitation for this review:** a local Git clone attempt failed because the execution environment could not resolve `github.com`. This review therefore used the GitHub repository API and recorded workflow metadata; it did not claim a local clean-clone test run.
+
+---
+
 
 ## Current source and release status
 
