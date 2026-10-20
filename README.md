@@ -498,3 +498,8 @@ Contributions are welcome, especially focused improvements to reliability, acces
 **SATARK Sentinel — evidence first, AI assisted, human reviewed.**
 
 </div>
+
+
+## Release & acceptance
+
+- [Track 1 release runbook](docs/TRACK_1_RELEASE_RUNBOOK.md) — real-provider acceptance, tenant isolation, migration safety and release gates.
