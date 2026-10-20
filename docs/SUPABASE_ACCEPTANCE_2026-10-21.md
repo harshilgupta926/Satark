@@ -13,8 +13,10 @@ Applied the private approval-RPC implementation migration and the approval-consu
 
 - `20261020184208 satark_private_approval_rpc_implementations`
 - `20261020184213 satark_approval_consumption_acl`
+- `20261020184535 satark_foreign_key_support_indexes`
+- `20261020184538 satark_rebind_membership_policies`
 
-The live catalog was re-queried after applying the changes. The four public approval/assignment wrappers (`satark_authorize_response_action`, `satark_decide_approval`, `satark_consume_response_approval`, `satark_list_assignable_members`) are `SECURITY INVOKER`. Anonymous execution is denied. The consumption RPC and its private implementation are not executable by `anon`, `authenticated`, or `service_role`.
+The live catalog was re-queried after applying the changes. The support indexes on approval actors, case-note creators, assigned cases, and investigation-job requesters are present. Approval, case-note, and investigation-job membership policies now call the non-exposed `satark_private.has_membership` helper rather than the public wrapper. The four public approval/assignment wrappers (`satark_authorize_response_action`, `satark_decide_approval`, `satark_consume_response_approval`, `satark_list_assignable_members`) are `SECURITY INVOKER`. Anonymous execution is denied. The consumption RPC and its private implementation are not executable by `anon`, `authenticated`, or `service_role`.
 
 The source migration `20261020052000_satark_private_approval_rpc_implementations.sql` was updated so a fresh migration run does not re-grant approval consumption. A no-op reconciliation file records the live version `20261020184208`; the ACL migration is recorded in source at `20261020184213_satark_approval_consumption_acl.sql`.
 
@@ -38,6 +40,8 @@ The transaction creates temporary test users and two tenant fixtures to exercise
 Additional live catalog checks verified:
 
 - Public RPC wrappers are invoker-security functions.
+- Approval, case-note and investigation-job policies reference `satark_private.has_membership`.
+- Five SATARK foreign-key support indexes are present in Nirdhoom.
 - The approval-consumption RPC is not executable by API roles or service_role.
 - Wazuh checkpoints force RLS and intentionally have no client-facing policies.
 - The Wazuh evidence source-document uniqueness index exists.
