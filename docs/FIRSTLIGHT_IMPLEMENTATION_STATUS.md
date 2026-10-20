@@ -79,6 +79,13 @@ This status describes repository-backed behavior and explicitly lists external c
 - FIRSTLIGHT API CI passed on commit `a36d9755962730463f9231f2eaa5ef347c695094` in [workflow run 39475104883](https://github.com/kaustubhdua/Satark/actions/runs/39475104883). The full shared API/engine pytest command passed, all three API/worker Docker builds succeeded, and runtime imports passed inside the images. This includes the live acceptance validator unit tests; it does **not** mean the live acceptance probe was run against Wazuh.
 - CodeQL and general CI had not completed at the time of this status update. The Vercel status on the candidate SHA remains failed with the existing build-rate-limit condition. Keep the release gate closed until those results and the required real infrastructure tests are resolved.
 
+## Persistent worker acceptance probe (2026-10-21)
+
+- Added `scripts/accept_firstlight_worker_live.py` as an explicitly gated, real-write acceptance probe for the persistent Wazuh worker. It requires exact confirmation of the configured tenant and case IDs plus `FIRSTLIGHT_WAZUH_ACCEPTANCE_ALLOW_WRITES=I_AUTHORIZE_WRITES_TO_THIS_TEST_CASE`; it must be used only with a dedicated isolated test tenant/case.
+- The probe runs one actual worker poll, reads the durable checkpoint and Wazuh evidence rows back, re-fetches up to ten preserved source objects, and verifies each object's bytes against its stored SHA-256 digest. It refuses to pass when the poll fetches zero real alerts, the checkpoint does not match, evidence is absent, or source-object verification fails. It performs no response action and creates no synthetic events.
+- Added fail-closed unit tests and included them in FIRSTLIGHT API CI path filters and test command. These are unit tests of acceptance logic, not a live database/Wazuh run. The latest workflow status must be checked for the new head before treating the code as CI-verified.
+- Detailed scope and operator precautions are documented in `docs/FIRSTLIGHT_WAZUH_API.md`; the evidence-based release checklist is `docs/TRACK_1_COMPLETION_PLAN.md`.
+
 ## Reproducible live acceptance probe (2026-10-20)
 
 - Added `scripts/accept_firstlight_wazuh_live.py` and regression tests in `tests/test_firstlight_wazuh_live_acceptance.py`. The probe calls the configured API and refuses an empty alert result; it never seeds events or uses the fictional demo case as a fallback.
