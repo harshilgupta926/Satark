@@ -41,6 +41,21 @@ python scripts/accept_firstlight_wazuh_live.py
 
 Use an authorized test tenant and an existing, genuine Wazuh alert in the configured agent allowlist. If no alert matches, the script fails rather than fabricating a passing result. The API-side Wazuh Indexer credentials and agent allowlist remain configured only in the API runtime.
 
+## Persistent worker acceptance (real writes; test case only)
+
+The separate `scripts/accept_firstlight_worker_live.py` probe exercises the persistent worker against the configured Wazuh Indexer and Supabase project. Unlike the API probe above, **this command writes evidence and updates an ingestion checkpoint**. It requires the worker's normal trusted-runtime configuration plus three explicit opt-ins: `FIRSTLIGHT_WAZUH_ACCEPTANCE_ALLOW_WRITES=I_AUTHORIZE_WRITES_TO_THIS_TEST_CASE`, `FIRSTLIGHT_WAZUH_ACCEPTANCE_CONFIRM_TENANT_ID`, and `FIRSTLIGHT_WAZUH_ACCEPTANCE_CONFIRM_CASE_ID`. The confirmation IDs must exactly match `FIRSTLIGHT_WAZUH_TENANT_ID` and `FIRSTLIGHT_WAZUH_CASE_ID`.
+
+Run only against a dedicated, isolated test tenant and case with an authorized actor membership. The worker verifies the case/tenant and membership before writes; after one poll the probe reads the checkpoint and evidence rows back, re-fetches up to ten preserved source objects, and checks their bytes against stored source digests. It exits non-zero if no real alert was fetched, the checkpoint is missing/mismatched, evidence is absent, or any checked source object fails digest verification. It does not create synthetic alerts and it does not execute response actions.
+
+```sh
+export FIRSTLIGHT_WAZUH_ACCEPTANCE_ALLOW_WRITES='I_AUTHORIZE_WRITES_TO_THIS_TEST_CASE'
+export FIRSTLIGHT_WAZUH_ACCEPTANCE_CONFIRM_TENANT_ID="$FIRSTLIGHT_WAZUH_TENANT_ID"
+export FIRSTLIGHT_WAZUH_ACCEPTANCE_CONFIRM_CASE_ID="$FIRSTLIGHT_WAZUH_CASE_ID"
+PYTHONPATH=. python -m scripts.accept_firstlight_worker_live
+```
+
+The worker also needs its normal private-host configuration, including `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `FIRSTLIGHT_WAZUH_ACTOR_ID`, `FIRSTLIGHT_WAZUH_INITIAL_SINCE` for the first run when no checkpoint exists, and the Wazuh Indexer credentials/agent allowlist. Do not run this command against production or the shared Nirdhoom/Saathi project as a substitute for an isolated test environment. A passing report verifies the observed ingestion/checkpoint/object path only; it does not prove tenant RLS isolation, upstream authenticity, provider response, or production readiness.
+
 ## Response contract and limitations
 
 A non-empty response reports `mode: "live_read_only_investigation"`, `persisted: false`, source evidence IDs/digests, deterministic findings, and explicit limitations. The endpoint does not persist a case, maintain a durable ingestion cursor, schedule polling, or execute containment. It is an operator-triggered read-only path; the separate Wazuh worker and persistent case/job workflow remain distinct.
