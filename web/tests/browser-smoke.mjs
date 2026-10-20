@@ -61,6 +61,18 @@ async function inspectViewport(viewport, label) {
   const page = await browser.newPage({ viewport });
   page.setDefaultTimeout(12_000);
   page.on('pageerror', error => failures.push(`${label}: uncaught browser error: ${error.message}`));
+  // FIRSTLIGHT is intentionally session-gated. Seed a clearly fake, client-only
+  // session fixture on that route so this browser smoke can exercise its UI;
+  // server APIs still reject the non-provider token and no auth gate is bypassed.
+  await page.addInitScript(() => {
+    if (window.location.pathname !== '/firstlight') return;
+    localStorage.setItem('satark:auth-session:v1', JSON.stringify({
+      access_token: 'browser-smoke-not-a-real-access-token',
+      refresh_token: 'browser-smoke-not-a-real-refresh-token',
+      expires_at: Date.now() + 60 * 60 * 1000,
+      user: { id: '11111111-1111-4111-8111-111111111111', email: 'browser-smoke@example.invalid' },
+    }));
+  });
   for (const route of routes) {
     const response = await page.goto(baseURL + route.path, { waitUntil: 'networkidle' });
     assert.ok(response && response.status() < 400, `${label}: ${route.path} returned ${response?.status()}`);
@@ -138,7 +150,25 @@ async function inspectViewport(viewport, label) {
       `${label}: skip link should be the first keyboard focus target on ${route.path}`);
     const bodyText = await page.locator('body').innerText();
     assert.match(bodyText, route.heading, `${label}: expected route content missing at ${route.path}`);
+    if (route.path === '/firstlight') {
+      assert.match(bodyText, /Configuration is not proof of operation\./,
+        `${label}: FIRSTLIGHT must distinguish configured integrations from verified operation`);
+      const readiness = page.locator('.fl-readiness');
+      await readiness.waitFor({ state: 'visible' });
+      const readinessState = await readiness.locator('.fl-readiness-state').innerText();
+      assert.match(readinessState, /STATUS UNAVAILABLE|CHECKING…|PROBE REPORTED · VERIFY RESULT|CONFIGURATION ONLY/,
+        `${label}: readiness badge must not imply an unverified provider is healthy`);
+      // Do not let the route-scoped fixture affect the later sign-in smoke test.
+      await page.evaluate(() => localStorage.removeItem('satark:auth-session:v1'));
+    }
     if (route.path === '/') {
+      const deferredReadiness = page.locator('.readiness-lazy-placeholder');
+      assert.equal(await deferredReadiness.count(), 1,
+        `${label}: below-the-fold service readiness should start as a deferred placeholder`);
+      assert.equal(await page.locator('.readiness-banner:not(.readiness-lazy-placeholder)').count(), 0,
+        `${label}: service readiness module must not render before its section is approached`);
+      await deferredReadiness.scrollIntoViewIfNeeded();
+      await page.waitForFunction(() => !!document.querySelector('.readiness-banner:not(.readiness-lazy-placeholder)'));
       const disclosure = page.locator('.tools-disclosure');
       // Force the disclosure into its expanded state instead of toggling it.
       // A click is state-dependent and can accidentally close it if browser

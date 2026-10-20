@@ -222,7 +222,7 @@ export default function ImageReviewPage() {
           <div className="workspace-grid">
             <div className="info-panel">
               <h3>Preview</h3>
-              {preview && <img className="image-preview" src={preview} alt={'Local preview of ' + inspection.name} />}
+              {preview && <img className="image-preview" src={preview} alt={'Local preview of ' + inspection.name} loading="lazy" decoding="async" />}
             </div>
             <div className="info-panel">
               <h3>File facts</h3>

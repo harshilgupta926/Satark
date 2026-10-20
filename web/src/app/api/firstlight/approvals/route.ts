@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readBoundedResponseJson } from '@/lib/read-bounded-response-json';
 import { NextResponse } from 'next/server';
 import { readBoundedJson } from '@/lib/read-bounded-json';
+import { isAllowedSupabaseEndpoint } from '@/lib/supabase-endpoint';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,7 +12,7 @@ function reply(body: unknown, status = 200) { return NextResponse.json(body, { s
 function config() {
   const raw = process.env.SUPABASE_URL, key = process.env.SUPABASE_PUBLISHABLE_KEY;
   if (!raw || !key) return null;
-  try { const url = new URL(raw); if (url.protocol !== 'https:' || !url.hostname.endsWith('.supabase.co')) return null; return { url: url.origin, key }; }
+  try { const url = new URL(raw); if (!isAllowedSupabaseEndpoint(url)) return null; return { url: url.origin, key }; }
   catch { return null; }
 }
 function canonical(value: unknown): string {

@@ -308,8 +308,10 @@ test('approval and assignable-member RPCs enforce tenant roles and fail closed',
     method: 'POST',
     body: JSON.stringify(authorizationArgs(approvalA)),
   });
-  assert.equal(consumePending.status, 200, 'consume endpoint should return a boolean for an ineligible approval');
-  assert.equal(await consumePending.json(), false, 'a pending approval must not be consumed');
+  assert.ok(
+    [401, 403, 404].includes(consumePending.status),
+    'authenticated clients must not invoke approval consumption until a trusted executor exists; got HTTP ' + consumePending.status,
+  );
 
   const selfDecision = await rest(a, 'rpc/satark_decide_approval', {
     method: 'POST',

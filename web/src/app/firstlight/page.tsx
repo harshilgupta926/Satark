@@ -1,13 +1,26 @@
 'use client';
 
 import SiteHeader from '../site-header';
-
-import { useEffect, useMemo, useState } from 'react';
+import FirstlightReadiness from '../../components/firstlight-readiness';
+import dynamic from 'next/dynamic';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getActiveTenant, getSession, type SatarkSession } from '../../lib/satark-auth';
-import PersistentCasePanel from './persistent-case-panel';
-import { EventTracker, FindingsInsights } from './insights';
 import { parseCsv, parseIsoTimestamp, toggleSimulatedTamper } from '../../lib/firstlight-import.mjs';
 import { buildFirstlightFindings, getTrustedFirstlightEvidence } from '../../lib/firstlight-investigation.mjs';
+
+// Large workspace and insight views are loaded only when their section/tab is needed.
+const PersistentCasePanel = dynamic(() => import('./persistent-case-panel'), {
+  ssr: false,
+  loading: () => <div className="panel" role="status">Loading persistent case workspace…</div>,
+});
+const FindingsInsights = dynamic(() => import('./insights').then(module => module.FindingsInsights), {
+  ssr: false,
+  loading: () => <p className="hint" role="status">Loading findings summary…</p>,
+});
+const EventTracker = dynamic(() => import('./insights').then(module => module.EventTracker), {
+  ssr: false,
+  loading: () => <p className="hint" role="status">Loading event timeline…</p>,
+});
 // The fallback reads only supplied summaries; it does not inspect the endpoint or file.
 
 type Evidence = { id: string; time: string; source: string; kind: string; summary: string; digest: string; tampered?: boolean; details?: Record<string, unknown>; metadata?: Record<string, unknown> };
@@ -65,6 +78,8 @@ async function digestBytes(bytes: ArrayBuffer) {
 }
 export default function FirstlightPage() {
   const [authChecked, setAuthChecked] = useState(false);
+  const persistentPanelRef = useRef<HTMLDivElement | null>(null);
+  const [persistentPanelVisible, setPersistentPanelVisible] = useState(false);
   const [session, setSession] = useState<SatarkSession | null>(null);
   const [evidence, setEvidence] = useState<Evidence[]>([]);
   const [audit, setAudit] = useState<Audit[]>([]);
@@ -79,6 +94,24 @@ export default function FirstlightPage() {
   const [persistentCaseId, setPersistentCaseId] = useState('');
   const [serverInvestigation, setServerInvestigation] = useState<any>(null);
   const [serverBusy, setServerBusy] = useState(false);
+  useEffect(() => {
+    if (!authChecked) return;
+    const target = persistentPanelRef.current;
+    if (!target) return;
+    if (!('IntersectionObserver' in window)) {
+      setPersistentPanelVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        setPersistentPanelVisible(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '320px 0px' });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [authChecked]);
+
   useEffect(() => {
     let active = true;
     void getSession().then(current => {
@@ -348,11 +381,16 @@ export default function FirstlightPage() {
     <div className="container subpage firstlight-page" id="main-content" tabIndex={-1}>
       <div className="firstlight-hero"><div><div className="eyebrow">Primary workspace</div><h1>FIRSTLIGHT<span className="heading-line">Incident Command.</span></h1><p className="lead">Reconstruct a security incident from evidence, verify integrity, correlate activity, and review response decisions. The training scenario is synthetic; no real accounts or endpoints are changed.</p><div className="actions"><button className="btn btn-primary" disabled={busy} onClick={loadCase}>{busy?'Loading evidence…':caseOpen && !importName?'Reset training case':caseOpen?'Load synthetic case':'Launch training case ↗'}</button><button className="btn btn-secondary" disabled={busy || !session} onClick={()=>void loadWazuhAlerts()}>Load real Wazuh alerts</button><label className="btn btn-secondary upload-trigger">Import JSON / CSV<input type="file" accept=".json,.csv,application/json,text/csv" disabled={busy} onChange={e=>{const file=e.currentTarget.files?.[0];e.currentTarget.value='';void importFile(file);}}/></label></div></div>
       <div className="incident-brief"><div className="brief-top"><span>Incident brief</span><span className="live-chip"><i/> SYNTHETIC</span></div><div className="brief-id">{caseOpen?'FL-TRAINING-001':'FL / READY'}</div><p>{caseOpen?'Account-compromise simulation · evidence loaded':'A guided investigation is ready to initialize.'}</p><div className="brief-stats"><div><strong>{evidence.length}</strong><span>Artifacts</span></div><div><strong>{findings.length}</strong><span>Findings</span></div><div><strong>{audit.length}</strong><span>Audit events</span></div></div></div></div>
+      <FirstlightReadiness />
       <div className="boundary-banner"><span className="boundary-icon">◇</span><div><strong>Evidence-first, not verdict-first</strong><p>Hashes prove only whether these in-session records changed relative to their captured digest. This is not independently anchored chain-of-custody evidence.</p></div></div>
       {notice&&<div className="notice-panel" role="status">{notice}</div>}
-      <PersistentCasePanel evidence={evidence} findings={findings} audit={audit} actions={actions} currentCaseId={persistentCaseId} importName={importName}
-        onLoaded={(caseId, rows, events) => { setPersistentCaseId(caseId); setEvidence(rows); setAudit(events); setActions([]); setCaseOpen(true); setSelected('evidence'); setNotice('Persistent case loaded from the workspace database.'); }}
-        onSaved={(caseId, message) => { setPersistentCaseId(caseId); setNotice(message); }} />
+      <div ref={persistentPanelRef} style={{ minHeight: 120 }}>
+        {persistentPanelVisible
+          ? <PersistentCasePanel evidence={evidence} findings={findings} audit={audit} actions={actions} currentCaseId={persistentCaseId} importName={importName}
+              onLoaded={(caseId, rows, events) => { setPersistentCaseId(caseId); setEvidence(rows); setAudit(events); setActions([]); setCaseOpen(true); setSelected('evidence'); setNotice('Persistent case loaded from the workspace database.'); }}
+              onSaved={(caseId, message) => { setPersistentCaseId(caseId); setNotice(message); }} />
+          : <div className="panel" role="status"><div className="panel-kicker">Persistent workspace</div><p className="muted">Workspace controls load when this section is near the viewport.</p></div>}
+      </div>
       <div className="firstlight-layout"><aside className="incident-nav"><div className="eyebrow">Investigation flow</div>{[['overview','Overview'],['evidence','Evidence ledger'],['findings','Findings & gaps'],['timeline','Event timeline'],['response','Response review'],['audit','Audit trail']].map(([key,label])=><button key={key} className={selected===key?'selected':''} onClick={()=>setSelected(key)}>{label}<span>{key==='evidence'?evidence.length:key==='findings'?findings.length:key==='audit'?audit.length:''}</span></button>)}<div className="side-boundary">Session only<br/>No real response actions</div></aside>
       <section className="incident-content">
         {selected==='overview'&&<div className="panel"><div className="panel-kicker">Case overview</div><h2>Establish the timeline before deciding.</h2><p>Start with the synthetic case or import a permitted JSON/CSV event artifact. Each event is normalized, hashed locally and reviewed with simple deterministic patterns.</p><div className="overview-steps">{[['01','Collect','Load training data or import events.'],['02','Validate','Inspect digests and source context.'],['03','Correlate','Review rules-based findings and gaps.'],['04','Decide','Record simulated response approvals.']].map(x=><div key={x[0]}><span>{x[0]}</span><strong>{x[1]}</strong><small>{x[2]}</small></div>)}</div>{!caseOpen&&<button className="btn btn-primary" onClick={loadCase}>Load synthetic case →</button>}</div>}

@@ -1,3 +1,4 @@
+import { isAllowedSupabaseEndpoint } from '@/lib/supabase-endpoint';
 import { createHash } from 'node:crypto';
 import { readBoundedResponseJson } from '@/lib/read-bounded-response-json';
 import { NextResponse } from 'next/server';
@@ -16,7 +17,7 @@ function configuration() {
   if (!rawUrl || !publishableKey) return null;
   try {
     const url = new URL(rawUrl);
-    if (url.protocol !== 'https:' || !url.hostname.endsWith('.supabase.co')) return null;
+    if (!isAllowedSupabaseEndpoint(url)) return null;
     return { url: url.origin, publishableKey };
   } catch { return null; }
 }

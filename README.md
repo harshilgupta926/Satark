@@ -10,6 +10,9 @@ SATARK Sentinel is a security-awareness and incident-investigation prototype bui
 [![Production smoke](https://github.com/kaustubhdua/Satark/actions/workflows/production-smoke.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/production-smoke.yml)
 [![CI](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/kaustubhdua/Satark/actions/workflows/codeql.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/codeql.yml)
+[![FIRSTLIGHT API CI](https://github.com/kaustubhdua/Satark/actions/workflows/firstlight-api-ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/firstlight-api-ci.yml)
+[![Web CI](https://github.com/kaustubhdua/Satark/actions/workflows/web-ci.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/web-ci.yml)
+[![Supabase local validation](https://github.com/kaustubhdua/Satark/actions/workflows/supabase-local-validation.yml/badge.svg)](https://github.com/kaustubhdua/Satark/actions/workflows/supabase-local-validation.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
 
@@ -480,6 +483,7 @@ Contributions are welcome, especially focused improvements to reliability, acces
 - [Architecture and threat model](docs/ARCHITECTURE.md)
 - [Analysis limitations](docs/ANALYSIS_LIMITATIONS.md)
 - [UI design notes](docs/UI_DESIGN.md)
+- [Web lazy-loading strategy](docs/WEB_LAZY_LOADING.md)
 - [Local development and safe integration setup](docs/LOCAL_DEVELOPMENT.md)
 - [Release readiness and deployment sign-off](docs/RELEASE_READINESS.md)
 - [Dedicated Supabase tenant-isolation test setup](docs/SUPABASE_TENANT_TEST_SETUP.md)
@@ -495,3 +499,10 @@ Contributions are welcome, especially focused improvements to reliability, acces
 **SATARK Sentinel — evidence first, AI assisted, human reviewed.**
 
 </div>
+
+
+## Release & acceptance
+
+- [Track 1 release runbook](docs/TRACK_1_RELEASE_RUNBOOK.md) — real-provider acceptance, tenant isolation, migration safety and release gates.
+- [Saathi live security catalog audit](docs/SAATHI_LIVE_SECURITY_CATALOG_2026-10-21.md) — read-only live RLS and approval-ACL evidence (not authenticated end-to-end proof).
+- [Local/offline acceptance runbook](docs/LOCAL_OFFLINE_ACCEPTANCE.md) — self-hosted Supabase + Ollama setup and no-internet acceptance steps.

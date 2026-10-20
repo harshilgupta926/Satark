@@ -1,3 +1,4 @@
+import { isAllowedSupabaseEndpoint } from '@/lib/supabase-endpoint';
 import { NextResponse } from 'next/server';
 import { readBoundedJson } from '@/lib/read-bounded-json';
 import { readBoundedResponseJson } from '@/lib/read-bounded-response-json';
@@ -33,7 +34,7 @@ function configured() {
   if (!raw || !key) return null;
   try {
     const url = new URL(raw);
-    if (url.protocol !== 'https:' || !url.hostname.endsWith('.supabase.co')) return null;
+    if (!isAllowedSupabaseEndpoint(url)) return null;
     return { url: url.origin, key };
   } catch { return null; }
 }

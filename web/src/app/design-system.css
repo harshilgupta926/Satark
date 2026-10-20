@@ -775,3 +775,21 @@ label.btn { margin: 0; }
 .persistent-case-panel select,
 .persistent-case-panel textarea { width: 100%; max-width: 100%; }
 .persistent-case-panel textarea { min-height: 88px; resize: vertical; }
+
+
+/* FIRSTLIGHT integration readiness — status is configuration-aware, never a synthetic live-health claim. */
+.fl-readiness { margin: 22px 0; padding: clamp(18px, 2.8vw, 26px); border: 1px solid var(--border); border-radius: var(--radius-xl); background: linear-gradient(135deg, rgba(196,181,253,.055), transparent 55%), var(--surface); }
+.fl-readiness-heading { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+.fl-readiness-heading h2 { margin-top: 6px; font-size: clamp(20px, 2.4vw, 27px); letter-spacing: -.03em; }
+.fl-readiness-state { display: inline-flex; align-items: center; padding: 5px 9px; border: 1px solid var(--warn-line); border-radius: 999px; background: var(--warn-soft); color: var(--warn); font: 600 10.5px/1.4 var(--mono); letter-spacing: .045em; }
+.fl-capability-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 10px; }
+.fl-capability { min-width: 0; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); background: rgba(9,9,11,.55); }
+.fl-capability-top { display: grid; gap: 8px; align-content: start; }
+.fl-capability-top strong { font-size: 14px; }
+.fl-capability-status { width: fit-content; max-width: 100%; padding: 3px 7px; border-radius: 5px; font-size: 11px; line-height: 1.4; color: var(--text-2); background: var(--surface-2); overflow-wrap: anywhere; }
+.fl-capability-status.configured { color: var(--warn); background: var(--warn-soft); }
+.fl-capability-status.unverified { color: var(--info); background: rgba(96,165,250,.1); }
+.fl-capability-status.degraded { color: var(--danger); background: var(--danger-soft); }
+.fl-capability p { margin: 10px 0 0; color: var(--text-2); font-size: 12.5px; line-height: 1.55; }
+.fl-readiness-note { margin: 14px 0 0; color: var(--text-3); font-size: 12.5px; line-height: 1.55; }
+@media (prefers-reduced-motion: reduce) { .fl-readiness * { scroll-behavior: auto; transition: none !important; } }

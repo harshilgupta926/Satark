@@ -1,6 +1,12 @@
 begin;
 select plan(50);
 
+-- The isolated Saathi test project may not have the private evidence bucket yet.
+-- Create it only inside this test transaction; the final ROLLBACK removes it.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('satark-evidence', 'satark-evidence', false, 4194304, array['application/json'])
+on conflict (id) do nothing;
+
 -- Deterministic fixtures for isolated local Supabase only. The enclosing
 -- transaction rolls back, so no test records survive.
 insert into auth.users (

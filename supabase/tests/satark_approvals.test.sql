@@ -117,20 +117,14 @@ select ok(not public.satark_authorize_response_action(
   'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
   'simulation.isolate-host', repeat('f',64)
 ), 'authorization rejects a mismatched payload hash');
-select ok(public.satark_consume_response_approval(
-  'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-  'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-  'simulation.isolate-host', encode(extensions.digest(convert_to('{"mode":"simulation","host_id":"host-1"}'::jsonb::text,'UTF8'),'sha256'),'hex')
-), 'the exact approved action can be consumed once');
-select ok(not public.satark_consume_response_approval(
-  'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-  'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-  'simulation.isolate-host', encode(extensions.digest(convert_to('{"mode":"simulation","host_id":"host-1"}'::jsonb::text,'UTF8'),'sha256'),'hex')
-), 'replaying a consumed approval is rejected');
+select ok(not has_function_privilege('authenticated',
+  'public.satark_consume_response_approval(uuid,uuid,uuid,text,text)', 'EXECUTE'),
+  'authenticated responders cannot consume approvals directly');
+select ok(not has_function_privilege('service_role',
+  'public.satark_consume_response_approval(uuid,uuid,uuid,text,text)', 'EXECUTE'),
+  'service-role calls cannot consume approvals until a reviewed executor exists');
 select is((select status from public.satark_approvals where id='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'),
-  'consumed', 'successful consumption leaves a durable terminal state');
+  'approved', 'the approval remains approved until an authorized executor is implemented');
 select is((select count(*)::integer from public.satark_approvals
   where tenant_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'), 0,
   'a tenant responder cannot read another tenant approval');
@@ -156,7 +150,7 @@ select throws_ok(
   'P0001', null, 'viewer role cannot decide approvals'
 );
 select ok((select chain_valid from public.satark_verify_audit_chain('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')),
-  'approval decisions and consumption preserve the audit hash chain');
+  'approval decisions preserve the audit hash chain while consumption remains disabled');
 
 -- Simulate storage-level tampering in this isolated test transaction only.
 -- Disable the immutability trigger as the local database owner, corrupt one hash,

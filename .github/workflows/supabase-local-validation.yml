@@ -27,7 +27,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pin a known stable CLI release so setup does not need the GitHub
+          # "latest release" API (which can be rate-limited in CI).
+          version: 2.117.0
+      - name: Verify pinned Supabase CLI
+        run: supabase --version
       - name: Verify migration files are ordered and present
         shell: bash
         run: |

@@ -2,7 +2,6 @@
 
 import SiteHeader from '../site-header';
 import { useState } from 'react';
-import jsQR from 'jsqr';
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_PIXELS = 12_000_000;
@@ -91,6 +90,7 @@ export default function QrPage() {
         if (!context) throw new Error('This browser could not prepare the image for local decoding.');
         context.drawImage(bitmap, 0, 0);
         const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+        const { default: jsQR } = await import('jsqr');
         const fallback = jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: 'attemptBoth' });
         values = fallback?.data.trim() ? [fallback.data.trim()] : [];
         canvas.width = 0;
