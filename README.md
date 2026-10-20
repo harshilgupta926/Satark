@@ -504,3 +504,5 @@ Contributions are welcome, especially focused improvements to reliability, acces
 ## Release & acceptance
 
 - [Track 1 release runbook](docs/TRACK_1_RELEASE_RUNBOOK.md) — real-provider acceptance, tenant isolation, migration safety and release gates.
+- [Saathi live security catalog audit](docs/SAATHI_LIVE_SECURITY_CATALOG_2026-10-21.md) — read-only live RLS and approval-ACL evidence (not authenticated end-to-end proof).
+- [Local/offline acceptance runbook](docs/LOCAL_OFFLINE_ACCEPTANCE.md) — self-hosted Supabase + Ollama setup and no-internet acceptance steps.
