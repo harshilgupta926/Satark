@@ -1,6 +1,7 @@
 'use client';
 
 import SiteHeader from '../site-header';
+import FirstlightReadiness from '../../components/firstlight-readiness';
 
 import { useEffect, useMemo, useState } from 'react';
 import { getActiveTenant, getSession, type SatarkSession } from '../../lib/satark-auth';
@@ -348,6 +349,7 @@ export default function FirstlightPage() {
     <div className="container subpage firstlight-page" id="main-content" tabIndex={-1}>
       <div className="firstlight-hero"><div><div className="eyebrow">Primary workspace</div><h1>FIRSTLIGHT<span className="heading-line">Incident Command.</span></h1><p className="lead">Reconstruct a security incident from evidence, verify integrity, correlate activity, and review response decisions. The training scenario is synthetic; no real accounts or endpoints are changed.</p><div className="actions"><button className="btn btn-primary" disabled={busy} onClick={loadCase}>{busy?'Loading evidence…':caseOpen && !importName?'Reset training case':caseOpen?'Load synthetic case':'Launch training case ↗'}</button><button className="btn btn-secondary" disabled={busy || !session} onClick={()=>void loadWazuhAlerts()}>Load real Wazuh alerts</button><label className="btn btn-secondary upload-trigger">Import JSON / CSV<input type="file" accept=".json,.csv,application/json,text/csv" disabled={busy} onChange={e=>{const file=e.currentTarget.files?.[0];e.currentTarget.value='';void importFile(file);}}/></label></div></div>
       <div className="incident-brief"><div className="brief-top"><span>Incident brief</span><span className="live-chip"><i/> SYNTHETIC</span></div><div className="brief-id">{caseOpen?'FL-TRAINING-001':'FL / READY'}</div><p>{caseOpen?'Account-compromise simulation · evidence loaded':'A guided investigation is ready to initialize.'}</p><div className="brief-stats"><div><strong>{evidence.length}</strong><span>Artifacts</span></div><div><strong>{findings.length}</strong><span>Findings</span></div><div><strong>{audit.length}</strong><span>Audit events</span></div></div></div></div>
+      <FirstlightReadiness />
       <div className="boundary-banner"><span className="boundary-icon">◇</span><div><strong>Evidence-first, not verdict-first</strong><p>Hashes prove only whether these in-session records changed relative to their captured digest. This is not independently anchored chain-of-custody evidence.</p></div></div>
       {notice&&<div className="notice-panel" role="status">{notice}</div>}
       <PersistentCasePanel evidence={evidence} findings={findings} audit={audit} actions={actions} currentCaseId={persistentCaseId} importName={importName}
