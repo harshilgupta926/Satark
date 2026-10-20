@@ -27,5 +27,5 @@ test('offline acceptance probe uses loopback-only service URLs by default', asyn
   assert.ok(probe.includes('http://127.0.0.1:54321'));
   assert.ok(probe.includes('http://127.0.0.1:11434'));
   assert.ok(probe.includes('check_local_url'));
-  assert.ok(probe.includes('does not itself prove that the host is offline'));
+  assert.ok(probe.includes('run it with external networking disabled'));
 });
