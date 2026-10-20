@@ -46,6 +46,17 @@ Additional live catalog checks verified:
 - Wazuh checkpoints force RLS and intentionally have no client-facing policies.
 - The Wazuh evidence source-document uniqueness index exists.
 
+### Additional live Saathi isolation test
+
+Executed `supabase/tests/satark_security.test.sql` against the Saathi test project through the connected SQL runner. The run reached the final assertion, which returned `ok 50 - viewers cannot read raw Wazuh source snapshots`; no SQL error was returned. Immediately afterwards, read-only checks found zero fixture tenants, cases, evidence, findings, or storage objects, and confirmed the temporary `satark-evidence` bucket was absent again. This verifies that the test transaction rolled back its fixture data and bucket.
+
+The SQL connector surfaces only the final result row for a multi-statement script, not the complete per-assertion TAP transcript. Therefore the complete assertion-by-assertion record remains the isolated GitHub CI run below; it reports all database test files successful (113 total tests).
+
+### Security-advisor snapshot
+
+- Nirdhoom: SATARK's worker-private checkpoint table is reported as RLS-enabled with no policy; this is intentional alongside FORCE RLS and no API-role table privileges. The advisor also reports nine authenticated SECURITY DEFINER functions belonging to Nirdhoom's other application workflows and a leaked-password-protection warning. Those unrelated functions and auth settings were not changed during this SATARK-only repair.
+- Saathi: the same intentional worker-private checkpoint notice is present; no additional security findings were returned in the latest advisor query.
+
 ## Important limitations
 
 These are database/schema tests, not a live provider acceptance run.
@@ -53,7 +64,7 @@ These are database/schema tests, not a live provider acceptance run.
 - No Wazuh Indexer endpoint was contacted in this database test.
 - No real Wazuh alert was ingested.
 - No Microsoft Defender device isolation or Entra session revocation was executed.
-- This does not replace the GitHub CI tenant-isolation job, which still requires dedicated test-account secrets.
+- The GitHub CI tenant-isolation job still requires dedicated test-account secrets. The clean-database workflow passed all four SQL test files (113 tests total), including `satark_rpc_hardening.test.sql` and `satark_security.test.sql`; see [workflow run 39479567883](https://github.com/kaustubhdua/Satark/actions/runs/39479567883).
 - The Supabase security advisor reports an `rls_enabled_no_policy` informational finding for `satark_ingestion_checkpoints`; the no-policy state is deliberate and combined with forced RLS and zero API-role grants. Do not add a permissive policy just to silence this advisory.
 - Nirdhoom has unrelated security-definer advisor findings for non-SATARK functions. They were not modified because they belong to the Nirdhoom application and are outside this change's scope.
 
