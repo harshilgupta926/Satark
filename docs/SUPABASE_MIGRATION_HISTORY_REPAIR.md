@@ -1,6 +1,6 @@
 # SATARK Supabase migration-history repair
 
-Last verified: 2026-10-20 UTC (read-only migration and index checks refreshed)
+Last verified: 2026-10-21 UTC (live SATARK-scoped migrations applied; migration-ledger reconciliation still requires a trusted CLI dry-run)
 
 ## Scope and evidence
 
@@ -17,57 +17,39 @@ A read-only migration-list check on 2026-10-20 found these relevant entries:
 - `20261020042000` — `satark_storage_policy_private_helper_rebind`: not recorded (repository file is a no-op; canonical policy was applied under `20261020044018`).
 - `20261020042449` — `satark_evidence_storage_dual_path_policy`: recorded.
 - `20261020044018` — `satark_storage_policy_private_helper_rebind`: recorded.
-- `20261020050000` — `satark_foreign_key_support_indexes`: not recorded. A read-only `pg_indexes` check also found the five SATARK support indexes from this migration absent in the live database.
-- `20261020051000` — `satark_rebind_membership_policies`: not recorded. This migration rebinds six approval, case-note, and investigation-job RLS policies to the private membership helper; PR #174's isolated migration, tenant-isolation, browser/accessibility, CI, and CodeQL checks passed before merge. A read-only live audit still finds all six policies referencing the revoked public wrapper, so these operations may fail closed until the controlled repair and push are completed.
-- `20261020052000` — `satark_private_approval_rpc_implementations`: not recorded. The repository migration moves four approval/assignment `SECURITY DEFINER` implementations into the non-exposed `satark_private` schema and leaves `public` functions as `SECURITY INVOKER` wrappers. A read-only security-advisor check on 2026-10-20 still reports these four public RPCs as callable `SECURITY DEFINER` functions in the shared live database. Apply only after the linked migration list and dry-run are verified as described below.
+- `20261020050000` — `satark_foreign_key_support_indexes`: source version not recorded in the live ledger. The five SATARK support indexes were applied and verified under live version `20261020184535`; a no-op reconciliation file now represents that recorded version.
+- `20261020051000` — `satark_rebind_membership_policies`: source version not recorded in the live ledger. The live policy rebind was applied and verified under version `20261020184538`; approval, case-note, and investigation-job policies now call `satark_private.has_membership`. A no-op reconciliation file represents the recorded live version.
+- `20261020052000` — `satark_private_approval_rpc_implementations`: source version not recorded in the live ledger. Its effects were applied under live version `20261020184208`, and a no-op reconciliation file represents that recorded version. The source migration was also updated so a clean migration run does not re-grant approval consumption. The public approval/assignment wrappers are now `SECURITY INVOKER`; approval consumption is revoked from API roles and service_role under live version `20261020184213`.
 
-The live private helper, ACLs, and final storage policies have been verified read-only. The later recorded migrations establish the intended final policy. The repository migration `202610200004` remains available for clean database resets; do not change it to a no-op. The repository migration `20261020042000` is already a no-op because the canonical policy was applied under `20261020044018`. The duplicate version `20261020043000` was removed from the repository in PR #164 and is not part of the repair command.
+The live private helper, ACLs, final storage policies, approval policy rebind, and five support indexes have been verified by live catalog queries. The live ledger records the index/policy/RPC changes under versions `20261020184535`, `20261020184538`, and `20261020184208`/`20261020184213`; the repository contains reconciliation files for those recorded versions. The repository migration `202610200004` remains available for clean database resets; do not change it to a no-op. The repository migration `20261020042000` is already a no-op because the canonical policy was applied under `20261020044018`. The duplicate version `20261020043000` was removed from the repository in PR #164 and is not part of the repair command.
 
 The live SATARK tenant, membership, case, evidence, finding, report, audit-event, ingestion-checkpoint, investigation-job, case-note and approval tables currently contain zero rows. Do not add fake production rows to test the application.
 
 ## Security-advisor status (read-only check, 2026-10-20)
 
-The two RPCs previously reported as exposed `SECURITY DEFINER` functions are hardened in the live shared database, and their migration files are tracked in this branch:
+The public audit-verification, tenant-creation, and approval/assignment wrappers are `SECURITY INVOKER` in the live shared database. Approval consumption is intentionally disabled until a trusted response executor exists. Their private implementations are kept in `satark_private` with fixed empty `search_path` values:
 
 - `20261018114205_harden_satark_audit_verification_rpc`: the public `satark_verify_audit_chain(uuid)` function is a `SECURITY INVOKER` wrapper; the private implementation uses an empty fixed `search_path` and checks membership in the requested tenant.
 - `20261018114247_harden_satark_tenant_creation_rpc`: the public `satark_create_tenant(text)` function is a `SECURITY INVOKER` wrapper; the private implementation derives the owner from `auth.uid()`, validates the name, creates the owner membership, and appends the audit event atomically.
 
 Read-only privilege checks confirmed that authenticated callers can execute the public wrappers, anonymous callers cannot, and both private implementations use an empty fixed `search_path`. The latest shared-project security-advisor response did not include these two wrappers. The clean-database suite now includes `supabase/tests/satark_rpc_hardening.test.sql`, which verifies invoker-only public wrappers, anonymous denial, authenticated tenant creation, owner-membership creation, valid audit-chain verification, blank-name rejection, and cross-tenant audit-verification denial in a rollback transaction.
 
-This does **not** mean the shared multi-application project's entire security-advisor output is clean. The read-only shared-project check reported 13 authenticated `SECURITY DEFINER` RPC findings, including four SATARK approval/assignable-member RPCs and functions belonging to other applications. Migration `20261020052000_satark_private_approval_rpc_implementations` moves those four SATARK implementations into `satark_private` behind `SECURITY INVOKER` public wrappers, preserving authenticated behavior while keeping a fixed empty `search_path` on the private implementations. The four findings should disappear from the public-schema advisor results after that migration is applied and verified; until then, the shared database still has the pre-migration functions. The remaining warnings belong to other applications sharing the database and require separate behavior-preserving review; do not blanket-revoke them or modify Nirdhoom/Saathi functions as part of this SATARK repair. The live PostgREST suite contains guard checks for owner-only assignable-member listing, cross-tenant denial, pending approvals not authorizing/consuming responses, and self/cross-tenant decisions being rejected. The isolated database regression suite in `supabase/tests/satark_approvals.test.sql` exercises requester/responder/viewer/foreign-tenant cases, successful approval, exact-payload authorization, one-time consumption, replay rejection, expiry, and audit-chain integrity inside a rollback transaction. The `satark_ingestion_checkpoints` RLS informational finding was also reviewed: the table has RLS enabled/forced and no grants to `anon` or `authenticated`, so it remains server-only.
+This does **not** mean the shared multi-application project's entire security-advisor output is clean. The latest read-only shared-project check still reports security-definer findings for unrelated Nirdhoom application functions and the intentional no-policy notice for the worker-private checkpoint table. No SATARK approval/assignable-member functions appeared in the current security-definer advisor findings. The remaining warnings belong to other applications sharing the database and require separate behavior-preserving review; do not blanket-revoke them or modify Nirdhoom/Saathi functions as part of this SATARK repair. The live PostgREST suite contains guard checks for owner-only assignable-member listing, cross-tenant denial, pending approvals not authorizing/consuming responses, and self/cross-tenant decisions being rejected. The isolated database regression suite in `supabase/tests/satark_approvals.test.sql` exercises requester/responder/viewer/foreign-tenant cases, successful approval, exact-payload authorization, one-time consumption, replay rejection, expiry, and audit-chain integrity inside a rollback transaction. The `satark_ingestion_checkpoints` RLS informational finding was also reviewed: the table has RLS enabled/forced and no grants to `anon` or `authenticated`, so it remains server-only.
 
 ## Required operator procedure
 
-From a trusted checkout, explicitly confirm that the linked project is `igqgtlmnwssjaoxkkzbm` before running any repair:
+The SATARK-scoped DDL has already been applied to Nirdhoom through the approved database connection, but the repository migration ledger has not been repaired through the Supabase CLI. The source migration versions `20261020050000`, `20261020051000`, and `20261020052000` are not the versions recorded for their equivalent live changes; the live versions are `20261020184535`, `20261020184538`, `20261020184208`, and `20261020184213`. Other older reconciliation files also exist. Therefore the earlier expected-three-pending-migrations instruction is stale and must not be followed blindly.
+
+From a trusted checkout, first confirm that the linked project is `igqgtlmnwssjaoxkkzbm`:
 
 ```sh
 supabase migration list --linked
-supabase migration repair 202610200004 20261020042000 --status applied --linked
-supabase migration list --linked
-```
-
-This records only the two already-superseded/missing versions as applied; it does not execute their SQL. Do not repair any other versions, and do not re-mark `20261020042449` or `20261020044018`. If the linked migration list differs from the evidence above, stop and re-review before changing history.
-
-After repair, confirm that versions `202610200004`, `20261018114039`, `20261020042000`, `20261020042449`, and `20261020044018` are recorded. Then preview pending migrations before changing the live schema:
-
-```sh
 supabase db push --dry-run --linked
 ```
 
-**Expected dry-run after PR #174 and the current SATARK hardening branch:** exactly these three pending repository migrations, in version order:
-1. `20261020050000_satark_foreign_key_support_indexes.sql` — creates the five SATARK support indexes.
-2. `20261020051000_satark_rebind_membership_policies.sql` — rebinds six SATARK RLS policies from the revoked public wrapper to the private membership helper.
-3. `20261020052000_satark_private_approval_rpc_implementations.sql` — moves four authenticated approval/assignable-member SECURITY DEFINER implementations behind private-schema functions while preserving public SECURITY INVOKER RPC wrappers.
+Review the complete output against the live migration ledger and the source/reconciliation files. Do not execute a repair or push if any listed version or SQL is unexpected. The intended schema effects for the support indexes, membership-policy rebind, and private approval RPC implementation have already been applied and verified; the remaining operator task is to reconcile version history safely, not to blindly reapply broad DDL.
 
-If any other migration is listed, stop and reconcile the migration set before applying anything. Do not execute the repair or push commands unless the linked project is confirmed as `igqgtlmnwssjaoxkkzbm` and the dry-run matches exactly. If it matches, apply the three pending SATARK-only migrations and verify the resulting history:
-
-```sh
-supabase db push --linked
-supabase migration list --linked
-```
-
-Then verify all five index names exist in `pg_indexes`:
-`satark_approvals_requested_by_idx`, `satark_approvals_decided_by_idx`, `satark_case_notes_created_by_idx`, `satark_cases_assigned_to_idx`, and `satark_investigation_jobs_requested_by_idx`. Also re-check that the six affected policies call `satark_private.has_membership` and that authenticated/anon cannot execute `public.satark_has_membership`. Run the isolated migration validation workflow after the live repair. Do not run a broad push if the dry-run differs from the expected three migrations.
+Use `supabase migration repair --help` from the installed CLI version before preparing a repair command. Mark a source version as applied only after confirming its effect is already present in the live database and that the later recorded version is its equivalent. Do not directly edit `supabase_migrations.schema_migrations` with SQL. After any history repair, rerun both commands above and run the isolated migration/security workflow. Keep the project linked to Nirdhoom; use Saathi only for test-specific work.
 
 ## Read-only policy and ACL verification
 
@@ -95,4 +77,4 @@ Expected privilege values are `true, false, false, false`. The read policy must 
 
 ## Boundary
 
-This is an operator-run history repair, not a live migration. Migration `20261020044018` was applied after isolated validation and verified read-only; no migration-history repair has been performed. The connected tools can inspect migrations and run read-only SQL but do not expose the Supabase CLI `migration repair` command. The expected pending migration list includes `20261020052000_satark_private_approval_rpc_implementations.sql` only after that migration is merged to `main`. The repair must be run from a trusted CLI environment with the project explicitly linked.
+The connected Supabase tools were used to apply and verify only SATARK-scoped schema changes in Nirdhoom and test-schema changes in Saathi. They do not expose the Supabase CLI migration-repair command. The live migration ledger still differs from repository source versions, so this document intentionally does not prescribe a blind repair command or `db push`. Finish the ledger reconciliation from a trusted CLI after checking the exact linked project and dry-run. Do not change unrelated Nirdhoom application functions or insert persistent SATARK fixtures into Nirdhoom.
