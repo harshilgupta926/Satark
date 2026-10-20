@@ -224,6 +224,8 @@ async def investigate_wazuh_alerts(
             "schema_version": "1.0",
             "source": "wazuh-indexer",
             "mode": "live_read_only_investigation",
+            "persisted": False,
+            "case_id": None,
             "fetched_count": 0,
             "integrity_summary": {"total": 0, "sealed": 0, "source_verified": 0, "mismatched": 0},
             "investigation": None,
