@@ -90,6 +90,8 @@ def test_live_wazuh_investigation_reports_empty_result_without_fabricating_event
     assert response.status_code == 200
     payload = response.json()
     assert payload["fetched_count"] == 0
+    assert payload["persisted"] is False
+    assert payload["case_id"] is None
     assert payload["investigation"] is None
     assert payload["integrity_summary"] == {"total": 0, "sealed": 0, "source_verified": 0, "mismatched": 0}
 
