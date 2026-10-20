@@ -37,6 +37,9 @@ on:
       - "tests/test_firstlight_wazuh_investigation_api.py"
       - "scripts/accept_firstlight_wazuh_live.py"
       - "tests/test_firstlight_wazuh_live_acceptance.py"
+      - "scripts/accept_firstlight_worker_live.py"
+      - "tests/test_firstlight_worker_live_acceptance.py"
+      - "docs/TRACK_1_COMPLETION_PLAN.md"
       - "tests/test_firstlight_engine.py"
       - "tests/test_firstlight_rules.py"
       - ".github/workflows/firstlight-api-ci.yml"
@@ -98,7 +101,7 @@ jobs:
       - name: Run shared API and engine tests
         env:
           PYTHONPATH: ${{ github.workspace }}
-        run: python -m pytest -q tests/test_firstlight_api.py tests/test_firstlight_api_details.py tests/test_firstlight_engine.py tests/test_firstlight_agents.py tests/test_firstlight_wazuh.py tests/test_firstlight_wazuh_worker.py tests/test_firstlight_wazuh_investigation_api.py tests/test_firstlight_wazuh_live_acceptance.py tests/test_firstlight_rules.py tests/test_firstlight_investigation_worker.py
+        run: python -m pytest -q tests/test_firstlight_api.py tests/test_firstlight_api_details.py tests/test_firstlight_engine.py tests/test_firstlight_agents.py tests/test_firstlight_wazuh.py tests/test_firstlight_wazuh_worker.py tests/test_firstlight_wazuh_investigation_api.py tests/test_firstlight_wazuh_live_acceptance.py tests/test_firstlight_worker_live_acceptance.py tests/test_firstlight_rules.py tests/test_firstlight_investigation_worker.py
 
       - name: Build FIRSTLIGHT API and worker images
         run: |
