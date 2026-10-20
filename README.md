@@ -483,6 +483,7 @@ Contributions are welcome, especially focused improvements to reliability, acces
 - [Architecture and threat model](docs/ARCHITECTURE.md)
 - [Analysis limitations](docs/ANALYSIS_LIMITATIONS.md)
 - [UI design notes](docs/UI_DESIGN.md)
+- [Web lazy-loading strategy](docs/WEB_LAZY_LOADING.md)
 - [Local development and safe integration setup](docs/LOCAL_DEVELOPMENT.md)
 - [Release readiness and deployment sign-off](docs/RELEASE_READINESS.md)
 - [Dedicated Supabase tenant-isolation test setup](docs/SUPABASE_TENANT_TEST_SETUP.md)
