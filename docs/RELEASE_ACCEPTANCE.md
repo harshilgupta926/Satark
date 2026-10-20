@@ -86,7 +86,7 @@ Use only authorized, non-sensitive test inputs. Never paste private, signed, cus
 
 ## Deployment blocker observed
 
-On 2026-10-20, Vercel reported `api-deployments-free-per-day` (more than 100 deployments in 24 hours; retry window 24 hours). The connected Vercel API has also returned HTTP 403 for deployment permission/inspection. The latest known READY production deployment source SHA is `08983cd9c88b1cab91ea800577b2ddc291549250`, older than current main `1acf9e1392f3d0110f01cf1a2eed7a4a70946894`. Do not repeatedly retry while quota is exhausted or bypass deployment permissions. The project owner must resolve the quota/permission, then deploy and verify the exact approved SHA.
+On 2026-10-20, Vercel reported `api-deployments-free-per-day` (more than 100 deployments in 24 hours; retry window 24 hours). The connected Vercel API has also returned HTTP 403 for deployment permission/inspection. The latest verified READY production deployment is `dpl_4HRahKGhrAGeEKQdqB2AhRcH4GUJ`, source SHA `1b6a2dee26498ef6eef5f28ba58062264ff98d07`, URL `satark-9ip804b4a-jyc-website.vercel.app`, alias `satark-rose.vercel.app`. Current main `1acf9e1392f3d0110f01cf1a2eed7a4a70946894` is 11 commits ahead. Do not repeatedly retry while quota is exhausted or bypass deployment permissions. The project owner must resolve the quota/permission, then deploy and verify the exact approved SHA.
 
 These are environment/account blockers, not passing tests.
 
