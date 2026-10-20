@@ -30,10 +30,18 @@ A hash calculated after collection proves that the stored snapshot has not chang
 | Deterministic investigation | Shared engine and regression tests; optional bounded model specialists | Documented end-to-end case; inspect each finding's evidence references, severity rationale, false-positive behavior, model timeout/malformed output | **Partial** |
 | Durable case/evidence/job persistence | Supabase tables, storage policies, job/audit migrations exist in repository | Real tenant fixture; create/import/investigate/reload/export; restart service and verify persistence | **Not end-to-end verified** |
 | Tenant isolation and RLS | Policies and pgTAP coverage exist; current CI preflight lacks dedicated test-account secrets | Run the real integration job with separate least-privilege identities for two tenants and a read-only viewer; demonstrate cross-tenant read/write denial | **Blocked; release gate** |
-| Approval lifecycle | Durable approval records/RPC/migrations exist; UI/executor parity incomplete | Test approve, reject, expiry, duplicate/replay, target binding, role changes, concurrent consumption, and denial at execution | **Partial** |
+| Approval lifecycle | Live public wrappers are SECURITY INVOKER; approval consumption is revoked from API/service roles until a trusted executor exists. Saathi pgTAP RPC hardening suite passed 30/30 assertions, including cross-tenant audit denial. | Test approval decisions and expiry against dedicated CI identities; implement a server-only actor-bound executor before re-enabling consumption; verify provider action/result audit and recovery | **Database hardening verified; executor not implemented** |
 | Microsoft Defender/Entra response | Guarded provider adapters exist separately | Use disposable authorized lab device/account; verify exact target, provider action ID/status, completion, audit record, retry/idempotency, and recovery | **Not live verified** |
 | Audit integrity | Session-local hash chain and persisted audit structures exist in code | Verify append-only semantics and tamper detection; document trusted clock, key/anchor, retention, and export validation | **Partial** |
 | Deployment and operations | Docker images and runtime imports pass dedicated CI | Deploy approved commit; verify health/readiness, auth, logs, secrets, worker restart, migrations, backups, restore, and rollback | **Blocked / unverified** |
+
+## Supabase verification completed in this audit (2026-10-21)
+
+- Nirdhoom Supabase received the missing private approval-RPC implementation and a follow-up ACL migration. Live catalog checks confirm the public wrappers are SECURITY INVOKER and the consumption RPC is not executable by API roles or service_role.
+- Saathi Supabase was used as the test environment. The checkpoint schema was added there with FORCE RLS and no API-role privileges; the Wazuh source-document uniqueness index was verified.
+- `supabase/tests/satark_rpc_hardening.test.sql` passed **30/30 pgTAP assertions** against Saathi. The test transaction rolled back; a post-test count confirmed zero persistent SATARK tenants, cases, evidence, audit events, approvals, investigation jobs, and checkpoints.
+- Full evidence and migration version details: [SUPABASE_ACCEPTANCE_2026-10-21.md](SUPABASE_ACCEPTANCE_2026-10-21.md).
+- This does not clear the GitHub tenant-isolation job, because its separate least-privilege test-account preflight still needs protected CI secrets. It also does not prove live Wazuh ingestion or provider-side response.
 
 ## 3. Prioritized work list
 
