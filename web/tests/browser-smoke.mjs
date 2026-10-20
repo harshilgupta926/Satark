@@ -61,6 +61,18 @@ async function inspectViewport(viewport, label) {
   const page = await browser.newPage({ viewport });
   page.setDefaultTimeout(12_000);
   page.on('pageerror', error => failures.push(`${label}: uncaught browser error: ${error.message}`));
+  // FIRSTLIGHT is intentionally session-gated. Seed a clearly fake, client-only
+  // session fixture on that route so this browser smoke can exercise its UI;
+  // server APIs still reject the non-provider token and no auth gate is bypassed.
+  await page.addInitScript(() => {
+    if (window.location.pathname !== '/firstlight') return;
+    localStorage.setItem('satark:auth-session:v1', JSON.stringify({
+      access_token: 'browser-smoke-not-a-real-access-token',
+      refresh_token: 'browser-smoke-not-a-real-refresh-token',
+      expires_at: Date.now() + 60 * 60 * 1000,
+      user: { id: '11111111-1111-4111-8111-111111111111', email: 'browser-smoke@example.invalid' },
+    }));
+  });
   for (const route of routes) {
     const response = await page.goto(baseURL + route.path, { waitUntil: 'networkidle' });
     assert.ok(response && response.status() < 400, `${label}: ${route.path} returned ${response?.status()}`);
