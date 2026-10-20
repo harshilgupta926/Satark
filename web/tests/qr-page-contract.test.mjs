@@ -7,7 +7,8 @@ test('QR page uses bounded local decoding and never fetches decoded URLs', async
   assert.ok(source.includes('MAX_FILE_BYTES = 10 * 1024 * 1024'));
   assert.ok(source.includes('MAX_PIXELS = 12_000_000'));
   assert.ok(source.includes('BarcodeDetector'));
-  assert.ok(source.includes("import jsQR from 'jsqr'"));
+  assert.ok(source.includes("const { default: jsQR } = await import('jsqr')"), 'fallback decoder must be loaded on demand');
+  assert.ok(!source.includes("import jsQR from 'jsqr'"), 'fallback decoder must not be in the initial QR page bundle');
   assert.ok(source.includes('jsQR(pixels.data, pixels.width, pixels.height'));
   assert.ok(source.includes('bundled cross-browser decoder'));
   assert.ok(source.includes('createImageBitmap'));
