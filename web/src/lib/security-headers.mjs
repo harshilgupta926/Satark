@@ -12,8 +12,8 @@ export function supabaseConnectOrigin(value, nodeEnv = 'production') {
   if (typeof value !== 'string' || !value.trim()) return '';
   try {
     const url = new URL(value.trim());
-    if (url.username || url.password || url.search || url.hash) return '';
-    if (url.protocol === 'https:' && /^[a-z0-9-]+\.supabase\.co$/i.test(url.hostname) && !url.port) {
+    if (url.username || url.password || url.search || url.hash || (url.pathname !== '/' && url.pathname !== '')) return '';
+    if (url.protocol === 'https:' && /^[a-z0-9-]+\\.supabase\\.co$/i.test(url.hostname) && !url.port) {
       return url.origin;
     }
     if (nodeEnv !== 'production' && url.protocol === 'http:'
