@@ -168,7 +168,7 @@ export default function Home() {
         <div ref={readinessRef} style={{ marginTop: 24, minHeight: 76 }}>
           {readinessVisible
             ? <ServiceReadiness />
-            : <div className="readiness-banner" role="status" aria-live="polite"><span className="readiness-dot" aria-hidden="true" /><div className="readiness-body"><strong>Service status loads on approach</strong><small>The configuration snapshot is deferred until this section is near the viewport.</small></div></div>}
+            : <div className="readiness-banner readiness-lazy-placeholder" role="status" aria-live="polite"><span className="readiness-dot" aria-hidden="true" /><div className="readiness-body"><strong>Service status loads on approach</strong><small>The configuration snapshot is deferred until this section is near the viewport.</small></div></div>}
         </div>
 
         <section className="sentinel-learning-strip">
