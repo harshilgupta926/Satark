@@ -13,7 +13,7 @@ export function supabaseConnectOrigin(value, nodeEnv = 'production') {
   try {
     const url = new URL(value.trim());
     if (url.username || url.password || url.search || url.hash || (url.pathname !== '/' && url.pathname !== '')) return '';
-    if (url.protocol === 'https:' && /^[a-z0-9-]+\\.supabase\\.co$/i.test(url.hostname) && !url.port) {
+    if (url.protocol === 'https:' && /^[a-z0-9-]+\.supabase\.co$/i.test(url.hostname) && !url.port) {
       return url.origin;
     }
     if (nodeEnv !== 'production' && url.protocol === 'http:'
@@ -39,7 +39,7 @@ export function buildSecurityHeaders(env = process.env) {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
-    `connect-src ${connectSources}`,
+    \`connect-src \${connectSources}\`,
     "media-src 'self' data: blob:",
     "worker-src 'self' blob:",
   ].join('; ');
