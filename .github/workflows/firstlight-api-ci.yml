@@ -23,6 +23,9 @@ on:
       - "supabase/migrations/20261020040028_satark_approval_trigger_acl.sql"
       - "docker-compose.local.yml"
       - "tests/test_firstlight_investigation_worker.py"
+      - "firstlight_response_executor.py"
+      - "tests/test_firstlight_response_executor.py"
+      - "docs/FIRSTLIGHT_RESPONSE_EXECUTOR.md"
       - "web/src/app/api/firstlight/jobs/route.ts"
       - "firstlight-api-requirements.txt"
       - "Dockerfile.firstlight-api"
@@ -69,6 +72,9 @@ on:
       - "supabase/migrations/20261020040028_satark_approval_trigger_acl.sql"
       - "docker-compose.local.yml"
       - "tests/test_firstlight_investigation_worker.py"
+      - "firstlight_response_executor.py"
+      - "tests/test_firstlight_response_executor.py"
+      - "docs/FIRSTLIGHT_RESPONSE_EXECUTOR.md"
       - "web/src/app/api/firstlight/jobs/route.ts"
       - "firstlight-api-requirements.txt"
       - "Dockerfile.firstlight-api"
@@ -104,7 +110,7 @@ jobs:
       - name: Run shared API and engine tests
         env:
           PYTHONPATH: ${{ github.workspace }}
-        run: python -m pytest -q tests/test_firstlight_api.py tests/test_firstlight_api_details.py tests/test_firstlight_engine.py tests/test_firstlight_agents.py tests/test_firstlight_wazuh.py tests/test_firstlight_wazuh_worker.py tests/test_firstlight_wazuh_investigation_api.py tests/test_firstlight_wazuh_live_acceptance.py tests/test_firstlight_worker_live_acceptance.py tests/test_firstlight_rules.py tests/test_firstlight_investigation_worker.py
+        run: python -m pytest -q tests/test_firstlight_api.py tests/test_firstlight_api_details.py tests/test_firstlight_engine.py tests/test_firstlight_agents.py tests/test_firstlight_wazuh.py tests/test_firstlight_wazuh_worker.py tests/test_firstlight_wazuh_investigation_api.py tests/test_firstlight_wazuh_live_acceptance.py tests/test_firstlight_worker_live_acceptance.py tests/test_firstlight_rules.py tests/test_firstlight_investigation_worker.py tests/test_firstlight_response_executor.py
 
       - name: Build FIRSTLIGHT API and worker images
         run: |
