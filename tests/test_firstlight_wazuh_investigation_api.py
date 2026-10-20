@@ -57,7 +57,7 @@ def test_live_wazuh_investigation_returns_read_only_findings(monkeypatch):
     assert payload["evidence"][0]["evidence_id"] == live_event()["event_id"]
     assert len(payload["evidence"][0]["sha256"]) == 64
     assert payload["investigation"]["case_id"] == payload["case_id"]
-    assert any("does not independently verify" in item for item in payload["limitations"])
+    assert any("did not independently verify" in item for item in payload["limitations"])
 
 
 def test_live_wazuh_investigation_rejects_missing_sync_token(monkeypatch):
