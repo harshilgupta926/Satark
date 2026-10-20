@@ -244,7 +244,7 @@ async def investigate_wazuh_alerts(
             "details": event.get("details", {}),
         }
         digest = sha256_record(record)
-        source_ids.append(event["event_id"])
+        source_ids.append(event["event_id"] + ":" + digest)
         envelopes.append({
             "evidence_id": event["event_id"],
             "record": record,
