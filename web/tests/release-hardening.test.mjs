@@ -41,6 +41,12 @@ test('baseline security headers and CSP directives are configured', () => {
   assert.match(securityHeaders, /form-action 'self'/);
 });
 
+test('Next.js security headers use the validated CSP origin builder', () => {
+  assert.match(config, /import \\{ buildSecurityHeaders \\} from ['"]\\.\\/src\\/lib\\/security-headers\\.mjs['"]/);
+  assert.match(config, /const securityHeaders = buildSecurityHeaders\\(process\\.env\\);/);
+  assert.doesNotMatch(config, /https:\\/\\/\\*\\.supabase\\.co|wss:\\/\\/\\*\\.supabase\\.co/);
+});
+
 test('CSP allows the configured Supabase auth origin without broad external access', async () => {
   const { buildSecurityHeaders, supabaseConnectOrigin } = await import('../src/lib/security-headers.mjs');
   const production = buildSecurityHeaders({
