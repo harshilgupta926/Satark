@@ -1,3 +1,4 @@
+import { isAllowedSupabaseEndpoint } from '@/lib/supabase-endpoint';
 import { NextResponse } from 'next/server';
 import { readBoundedResponseText } from '@/lib/read-bounded-response.mjs';
 
@@ -32,7 +33,7 @@ function authConfig() {
   if (!rawUrl || !publishableKey) return null;
   try {
     const url = new URL(rawUrl);
-    if (url.protocol !== 'https:' || !url.hostname.endsWith('.supabase.co')) return null;
+    if (!isAllowedSupabaseEndpoint(url)) return null;
     return { url: url.origin, publishableKey };
   } catch { return null; }
 }
