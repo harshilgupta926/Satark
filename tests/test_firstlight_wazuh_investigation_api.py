@@ -53,7 +53,7 @@ def test_live_wazuh_investigation_returns_read_only_findings(monkeypatch):
     assert payload["mode"] == "live_read_only_investigation"
     assert payload["persisted"] is False
     assert payload["fetched_count"] == 1
-    assert payload["integrity_summary"] == {"total": 1, "verified": 1, "mismatched": 0}
+    assert payload["integrity_summary"] == {"total": 1, "sealed": 1, "source_verified": 0, "mismatched": 0}
     assert payload["evidence"][0]["evidence_id"] == live_event()["event_id"]
     assert len(payload["evidence"][0]["sha256"]) == 64
     assert payload["investigation"]["case_id"] == payload["case_id"]
@@ -91,7 +91,7 @@ def test_live_wazuh_investigation_reports_empty_result_without_fabricating_event
     payload = response.json()
     assert payload["fetched_count"] == 0
     assert payload["investigation"] is None
-    assert payload["integrity_summary"] == {"total": 0, "verified": 0, "mismatched": 0}
+    assert payload["integrity_summary"] == {"total": 0, "sealed": 0, "source_verified": 0, "mismatched": 0}
 
 
 def test_live_wazuh_investigation_caps_page_size(monkeypatch):
