@@ -1,3 +1,4 @@
+import { isAllowedSupabaseEndpoint } from '@/lib/supabase-endpoint';
 import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { readBoundedResponseText } from '@/lib/read-bounded-response.mjs';
@@ -41,7 +42,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 
   try {
     const url = new URL(raw);
-    if (url.protocol !== 'https:' || !url.hostname.endsWith('.supabase.co')) {
+    if (!isAllowedSupabaseEndpoint(url)) {
       return reply({ error: 'Report storage is not configured.' }, 503);
     }
 
