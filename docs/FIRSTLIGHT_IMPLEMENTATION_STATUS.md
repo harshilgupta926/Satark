@@ -74,6 +74,13 @@ This status describes repository-backed behavior and explicitly lists external c
 - The Wazuh integration is merged in PR #160; its FIRSTLIGHT API CI, CodeQL, general CI, Web CI, and isolated migration validation passed on that PR head. PR #161 and PR #164 storage-policy cleanup checks passed; PR #167's object-key regression test and PR #168's SATARK foreign-key indexes also passed their exact-head CI, Web CI, CodeQL and isolated migration checks.
 - Vercel currently has an older production deployment at SHA `21abd4c7466cb7490ae1acb372d04008f72e40d5`; the latest available deployment is a READY preview for branch `feat/firstlight-wazuh-rebased` at SHA `a6ad65ea910c40362bb9005febb447893776002f`. A new deployment attempt was blocked by HTTP 402 `api-deployments-free-per-day` with a 24-hour retry window; the runtime-error API returned 403. The production environment inventory lacks `FIRSTLIGHT_API_URL`, `FIRSTLIGHT_API_TOKEN`, `FIRSTLIGHT_WAZUH_SYNC_TOKEN` and Wazuh Indexer configuration. No authorized Wazuh endpoint/credentials or SATARK test tenant/case/actor exists; all 11 SATARK data tables currently contain zero rows, so real end-to-end ingestion remains blocked.
 
+## Reproducible live acceptance probe (2026-10-20)
+
+- Added `scripts/accept_firstlight_wazuh_live.py` and regression tests in `tests/test_firstlight_wazuh_live_acceptance.py`. The probe calls the configured API and refuses an empty alert result; it never seeds events or uses the fictional demo case as a fallback.
+- The probe checks the response mode, read-only/no-persistence contract, evidence ID binding, Wazuh source identity, index/document/source-snapshot provenance, canonical normalized-record SHA-256 values, and investigation/case ID binding.
+- Added the acceptance-validator tests to FIRSTLIGHT API CI and documented safe execution in `docs/FIRSTLIGHT_WAZUH_API.md`. The probe itself has **not** been run against a real Wazuh tenant because this audit has no authorized live endpoint/credentials. Passing its unit tests is not live connectivity evidence.
+- Corrected the `firstlight_api.py` module docstring to distinguish the caller-supplied case endpoint from the real, configured read-only Wazuh routes.
+
 ## Additional live Wazuh API path (2026-10-20)
 
 - Added `POST /api/v1/integrations/wazuh/investigate`, an authenticated read-only path that queries the configured Wazuh Indexer, enforces the configured tenant UUID and bounded result count, computes evidence digests over normalized source records, and runs the canonical deterministic investigation engine. Optional model agents remain advisory.
