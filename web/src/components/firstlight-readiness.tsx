@@ -56,6 +56,7 @@ export default function FirstlightReadiness() {
   }, []);
 
   const capabilities = snapshot?.capabilities ?? [];
+  const healthProbeLabel = snapshot?.healthProbesRun ? 'Probe reported' : 'No live probe';
   const ordered = priority.map(id => capabilities.find(item => item.id === id)).filter((item): item is Capability => Boolean(item));
 
   return (
@@ -65,7 +66,7 @@ export default function FirstlightReadiness() {
           <div className="panel-kicker">Live integration readiness</div>
           <h2 id="fl-readiness-title">Configuration is not proof of operation.</h2>
         </div>
-        <span className="fl-readiness-state">{unavailable ? 'STATUS UNAVAILABLE' : snapshot ? 'NO LIVE PROBES' : 'CHECKING…'}</span>
+        <span className="fl-readiness-state">{unavailable ? 'STATUS UNAVAILABLE' : !snapshot ? 'CHECKING…' : snapshot.healthProbesRun ? 'PROBE REPORTED · VERIFY RESULT' : 'CONFIGURATION ONLY'}</span>
       </div>
       {unavailable ? (
         <p className="fl-readiness-note" role="status">The capability endpoint could not be verified. Do not assume telemetry, storage, or response services are available.</p>
@@ -85,7 +86,7 @@ export default function FirstlightReadiness() {
             ))}
           </div>
           <p className="fl-readiness-note">
-            Snapshot {new Date(snapshot.generatedAt).toLocaleString('en-IN')}. {snapshot.healthProbesRun
+            Snapshot {new Date(snapshot.generatedAt).toLocaleString('en-IN')}. {healthProbeLabel}. {snapshot.healthProbesRun
               ? 'A health probe was reported by the server; provider-side action is still not implied.'
               : 'No live health probes were run.'} {snapshot.productionReady
               ? 'The server reports production readiness; verify the linked acceptance evidence before release.'
