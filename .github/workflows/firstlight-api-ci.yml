@@ -78,6 +78,9 @@ on:
       - "tests/test_firstlight_wazuh.py"
       - "scripts/accept_firstlight_wazuh_live.py"
       - "tests/test_firstlight_wazuh_live_acceptance.py"
+      - "scripts/accept_firstlight_worker_live.py"
+      - "tests/test_firstlight_worker_live_acceptance.py"
+      - "docs/TRACK_1_COMPLETION_PLAN.md"
       - "tests/test_firstlight_engine.py"
       - ".github/workflows/firstlight-api-ci.yml"
   workflow_dispatch:
